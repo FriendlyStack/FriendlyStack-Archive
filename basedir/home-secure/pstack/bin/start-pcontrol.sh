@@ -1,11 +1,29 @@
 #!/bin/bash
+
+
+##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
+##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+##
+##This program is free software: you can redistribute it and/or modify
+##it under the terms of the GNU Affero General Public License as
+##published by the Free Software Foundation, either version 3 of the
+##License, or (at your option) any later version.
+##
+##This program is distributed in the hope that it will be useful,
+##but WITHOUT ANY WARRANTY; without even the implied warranty of
+##MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##GNU Affero General Public License for more details.
+##
+##You should have received a copy of the GNU Affero General Public License
+##along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 export LANG="en_US.UTF-8"
-#killall pcontrol.pl
-#/home/pstack/bin/pcontrol.pl >/dev/null 2>&1 &
-#/home/pstack/bin/pcontrol.pl &
 runlevel_variable=$(runlevel | cut -d ' ' -f2)
 if (("$runlevel_variable" == 5)) ; then
-/etc/init.d/FriendlyStackWatcher restart
-/etc/init.d/pstack restart
+systemctl restart FriendlyStackWatcher.service
+systemctl restart pstack.service
+#/etc/init.d/FriendlyStackWatcher restart
+#/etc/init.d/pstack restart
 fi
 exit 0
