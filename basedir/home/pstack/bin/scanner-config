@@ -1,0 +1,16 @@
+#!/usr/bin/perl
+use Config::General qw(ParseConfig SaveConfig SaveConfigString);
+my %scannerConfig = ParseConfig("FriendlyStack.conf");
+#Bus 001 Device 017: ID 04b8:110b Seiko Epson Corp.
+$usbStatus = `lsusb`;
+open( $usbDevices, "<", \$usbStatus );
+while (<$usbDevices>) {
+    $_ =~ /^Bus\s(\d{3})\sDevice\s(\d{3})\:\sID\s(\w{4})\:(\w{4})\s/;
+    ($bus,$dev,$vendor,$product) = ($1,$2,$3,$4);
+    if ( exists( $scannerConfig{"$vendor:$product"} ) ) {
+        print qq($scannerConfig{"$vendor:$product"}{'Configuration'}\n);
+        last;
+    }
+}
+
+close($usbDevices);

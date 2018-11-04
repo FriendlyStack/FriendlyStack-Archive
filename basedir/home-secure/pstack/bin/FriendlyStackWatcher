@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+use Time::localtime;
+use POSIX ":sys_wait_h";
+use Proc::Daemon;
+
+if ( -e '/var/run/FriendlyStackWatcher.pid' ) {
+if ( kill 0, get_pidfile('/var/run/FriendlyStackWatcher.pid') ) { exit 0 }
+}
+
+my $daemon = Proc::Daemon->new(
+pid_file => '/var/run/FriendlyStackWatcher.pid',
+work_dir => '/home/pstack/bin',
+setuid   => '0',
+setgid   => '0',
+
+#child_STDOUT => '+>>FriendlyStackWatcher.log',
+
+#child_STDERR => '+>>FriendlyStackWatcher.log',
+child_STDOUT => '/dev/null',
+child_STDERR => '/dev/null',
+#file_umask   => '0666'
+);
+if ( $daemon->Status('/var/run/FriendlyStackWatcher.pid') ) { exit 0 }
+
+$daemon->init();
+my $continue = 1;
+
+$SIG{TERM} = sub { $continue = 0 };
+
+while ($continue) {
+sleep(1);
+}
+unlink("/var/run/FriendlyStack.pid");
+exit(0);
+
+sub get_pidfile {
+
+    # the filename should be passed in as a parameter
+    my $filename = shift;
+    open FILE, $filename or die "Could not read from $filename, program halting.";
+
+    # read the record, and chomp off the newline
+    chomp( my $record = <FILE> );
+    close FILE;
+    return $record;
+}

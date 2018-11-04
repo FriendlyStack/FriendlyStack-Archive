@@ -1,0 +1,20 @@
+input[type=submit]
+{
+padding:9px;
+}
+input[type=text]{
+padding: 9px;
+}
+label{
+font-size:12px;
+}
+h2{
+font-size:15px;
+}
+p{
+font-size:12px;
+}
+div#envelope{
+width: 80%;
+margin: 10px 30% 10px 11%;
+}

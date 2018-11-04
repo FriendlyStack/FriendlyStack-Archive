@@ -1,0 +1,8 @@
+SUBSYSTEM=="tty",ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", SYMLINK+="pcontrol"
+SUBSYSTEM=="tty",ACTION=="add", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", SYMLINK+="pcontrol", RUN+="/home/pstack/bin/start-pcontrol.sh"
+SUBSYSTEM=="tty",ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8036", SYMLINK+="pcontrol"
+SUBSYSTEM=="tty",ACTION=="add", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8036", SYMLINK+="pcontrol", RUN+="/home/pstack/bin/start-pcontrol.sh"
+SUBSYSTEM=="tty",ATTRS{idVendor}=="1b4f", ATTRS{idProduct}=="9206", SYMLINK+="pcontrol"
+SUBSYSTEM=="tty",ACTION=="add", ATTRS{idVendor}=="1b4f", ATTRS{idProduct}=="9206", SYMLINK+="pcontrol", RUN+="/home/pstack/bin/start-pcontrol.sh"
+SUBSYSTEM=="tty",ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="pcontrol"
+SUBSYSTEM=="tty",ACTION=="add", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="pcontrol", RUN+="/home/pstack/bin/start-pcontrol.sh"

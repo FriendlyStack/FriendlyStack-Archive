@@ -1,0 +1,24 @@
+div#envelope{
+width: 80%;
+margin: 10px 30% 10px 11%;
+}
+
+
+#link {
+  display : block;
+  width:100px;
+  height:40px;
+}
+
+img.Picture {
+        min-width: 480px;
+}
+
+
+        .tftextinput{
+                width:90%;
+        }
+        .tfbutton {
+                width: 10%;
+        }
+

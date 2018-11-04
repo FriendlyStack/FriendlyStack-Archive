@@ -1,0 +1,3 @@
+# Arduino Pro Micro USB
+ATTRS{idVendor}=="1b4f", ATTRS{idProduct}=="9205", ENV{ID_MM_DEVICE_IGNORE}="1"
+ATTRS{idVendor}=="1b4f", ATTRS{idProduct}=="9206", ENV{ID_MM_DEVICE_IGNORE}="1"

@@ -1,0 +1,452 @@
+#!/usr/bin/perl
+
+##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
+##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+##
+##This program is free software: you can redistribute it and/or modify
+##it under the terms of the GNU Affero General Public License as
+##published by the Free Software Foundation, either version 3 of the
+##License, or (at your option) any later version.
+##
+##This program is distributed in the hope that it will be useful,
+##but WITHOUT ANY WARRANTY; without even the implied warranty of
+##MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##GNU Affero General Public License for more details.
+##
+##You should have received a copy of the GNU Affero General Public License
+##along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+use Linux::Inotify2;
+use File::Find;
+use DBI;
+use Encode qw(encode decode);
+use Time::localtime;
+use File::stat;
+use Digest::MD5 qw(md5 md5_hex md5_base64);
+use POSIX ":sys_wait_h";
+use Proc::Daemon;
+
+my $CPUs           = `/usr/bin/nproc`;
+my $videoEncodePID = 0;
+chomp($CPUs);
+my @pids     = ();
+my %basepath = (
+    Document => "/home/pstack/Documents",
+    Picture  => "/home/pstack/Multimedia",
+    Video    => "/home/pstack/Multimedia",
+);
+
+open(PWHANDLE,"<","/home/pstack/bin/mysql.pwd");
+my $sqlPassword = <PWHANDLE>;
+chomp($sqlPassword);
+close(PWHANDLE);
+
+BEGIN { unshift( @INC, "/home/pstack/bin" ); }
+use pstack;
+
+if ( -e '/var/run/FriendlyStackWatcher.pid' ) {
+    if ( kill 0, get_pidfile('/var/run/FriendlyStackWatcher.pid') ) { exit 0 }
+}
+
+my $daemon = Proc::Daemon->new(
+    pid_file => '/var/run/FriendlyStackWatcher.pid',
+    work_dir => '/home/pstack/bin',
+    setuid   => '0',
+    setgid   => '0',
+
+    #child_STDOUT => '+>>FriendlyStackWatcher.log',
+
+    #child_STDERR => '+>>FriendlyStackWatcher.log',
+    child_STDOUT => '/dev/null',
+    child_STDERR => '/dev/null',
+
+    #file_umask   => '0666'
+);
+if ( $daemon->Status('/var/run/FriendlyStackWatcher.pid') ) { exit 0 }
+
+$daemon->init();
+my $continue = 1;
+
+$SIG{TERM} = sub { $continue = 0 };
+
+my @directories = ( "/home/pstack/Documents", "/home/pstack/Multimedia" );
+my $doIndexing = true;
+
+system("renice -n -20 -p $$");
+my $inotify = new Linux::Inotify2;
+
+$inotify->blocking(false);
+$dir = "/home/pstack/Documents";
+
+find( \&wanted, @directories );
+
+sub wanted {
+    if ( -d $File::Find::name ) {
+
+        #$inotify->watch( $File::Find::name, IN_CLOSE_WRITE | IN_DELETE | IN_CREATE | IN_MOVE, sub { push( @events, shift ); } );
+        $inotify->watch( $File::Find::name, IN_CLOSE_WRITE | IN_DELETE | IN_CREATE | IN_MOVE );
+        print "$File::Find::name\n";
+    }
+
+}
+
+unless ( $pid_indexing = fork ) {
+    my ( $path, $quotedpath, @mdate, $ts, $time, $rv, $dbh, $sth );
+    $dbh      = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+    $sth      = $dbh->prepare("SET NAMES 'utf8'");
+    $rv       = $sth->execute;
+    $sth      = $dbh->prepare("SET low_priority_updates=1");
+    $rv       = $sth->execute;
+    $time     = time();
+    $printers = {};
+    open( BLAH, "lpstat -v |" );
+    while (<BLAH>) { $_ =~ /^device for (\w+)\: pstack\:(\w{32})$/; ${$printers}{$2} = $1; }
+    close(BLAH);
+
+    #find( { wanted => \&index_files, no_chdir => 1, follow => 1, postprocess => \&index_destinations }, @directories );
+    find(
+        {
+            wanted      => sub { index_files($dbh) },
+            no_chdir    => 1,
+            postprocess => sub { index_destinations($dbh) }
+        },
+        @directories
+    );
+    find( { wanted => \&clean_previews, no_chdir => 1 }, ("/home/pstack/Previews/") );
+    $sth = $dbh->prepare("delete LOW_PRIORITY from `Documents` where `checked`<$time");
+    $rv  = $sth->execute;
+    $sth = $dbh->prepare("delete LOW_PRIORITY from `Destinations` where `checked`<$time");
+    $rv  = $sth->execute;
+    $sth->finish;
+    $dbh->disconnect();
+
+    foreach $key ( keys %{$printers} ) {
+        if ( defined ${$printers}{$key} ) { system("lpadmin -x \"${$printers}{$key}\""); sleep 2; system("/etc/init.d/samba reload"); }
+    }
+    print "done!\n";
+    exit(0);
+}
+push( @pids, $pid_indexing );
+
+sub index_destinations {
+    my $dbh = shift;
+
+    if ( ( -d $File::Find::dir ) && ( $File::Find::dir ne $directories[0] ) && !( $File::Find::dir =~ /^$directories[1]/ ) ) {
+        $time = time();
+        $path = $File::Find::dir;
+
+        #$dbh  = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+        $path =~ s/^$directories[0]\///;
+        $path       = decode( 'utf-8', $path );
+        $quotedpath = $dbh->quote($path);
+        $sth        = $dbh->prepare("select ID from Destinations where `Destination`=$quotedpath");
+        $rv         = $sth->execute;
+        if ( $sth->rows() == 0 ) {
+            $sth = $dbh->prepare( "INSERT INTO `Destinations` SET `checked`=$time, `Destination`=$quotedpath, `Destination_md5`='" . md5_hex( encode( 'utf-8', $path ) ) . "'" );
+            $rv = $sth->execute;
+        }
+        else {
+            $sth = $dbh->prepare("UPDATE LOW_PRIORITY `Destinations` SET `checked`=$time WHERE `Destination`=$quotedpath");
+            $rv  = $sth->execute;
+        }
+        if ( exists ${$printers}{ md5_hex( encode( 'utf-8', $path ) ) } ) { delete ${$printers}{ md5_hex( encode( 'utf-8', $path ) ) }; }
+    }
+}
+
+sub index_files {
+    my $dbh = shift;
+
+    #print "indexer-------->$File::Find::name\n";
+    if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $File::Find::name =~ /\/\..*$|\~.*$/ ) ) {
+
+        #$dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+        $time       = time();
+        $path       = decode( 'utf-8', $File::Find::name );
+        $quotedpath = $dbh->quote($path);
+        @mdate      = CORE::localtime( stat($File::Find::name)->mtime );
+        $ts         = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
+        $sth        = $dbh->prepare("select ID from Documents where path=$quotedpath and timestamp(TS)=timestamp($ts)");
+        $rv         = $sth->execute;
+        if ( $sth->rows() == 0 ) {
+            pstack::feedstack( $dbh, $File::Find::name, 0 );
+        }
+        else {
+            $sth = $dbh->prepare("UPDATE LOW_PRIORITY `Documents` SET `checked`=$time WHERE path=$quotedpath and timestamp(TS)=timestamp($ts)");
+            $rv  = $sth->execute;
+        }
+
+        #$sth->finish;
+        #$dbh->disconnect();
+    }
+}
+
+sub clean_previews {
+    my $preview = $_;
+    if ( ( -f $File::Find::name ) && ( $preview =~ /(\d+)\.(png)/i ) ) {
+        my $ID = $1;
+        $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+        $sth = $dbh->prepare("select * from Documents where ID=$ID");
+        $rv  = $sth->execute;
+        if ( $sth->rows < 1 ) { unlink($File::Find::name); }
+    }
+}
+
+sub do_it {
+    my $e = shift;
+    print "events for " . $e->fullname . "have been lost\n" if $e->IN_Q_OVERFLOW;
+
+    #$dbh ||= DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+    if ( $e->IN_DELETE ) {
+        if ( $e->IN_ISDIR ) {
+        }
+        else {
+            unless ( $pid = fork ) {
+                system("renice -n 5 -p $$");
+                print $e->cookie . "\t" . $e->fullname . "IN_DELETE\n";
+                my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+                $sth        = $dbh->prepare("SET NAMES 'utf8'");
+                $rv         = $sth->execute;
+                $path       = decode( 'utf-8', $e->fullname );
+                $quotedpath = $dbh->quote($path);
+
+                #$quotedpath =~ s/\Q$basepath//;
+                $sth = $dbh->prepare("delete from Documents where path=$quotedpath");
+                $rv  = $sth->execute;
+                $sth->finish;
+                $dbh->disconnect();
+                exit(0);
+            }
+            push( @pids, $pid );
+        }
+    }
+    elsif ( $e->IN_CREATE && $e->IN_ISDIR ) {
+        if ( -d $e->fullname ) {
+
+            #$inotify->watch( $e->fullname, IN_CLOSE_WRITE | IN_DELETE | IN_CREATE | IN_MOVE, sub { push( @events, shift ); } );
+            $inotify->watch( $e->fullname, IN_CLOSE_WRITE | IN_DELETE | IN_CREATE | IN_MOVE );
+            find( \&wanted, $e->fullname );
+            unless ( $pid = fork ) {
+                system("renice -n 5 -p $$");
+                $time = time();
+
+                #$dbh->disconnect();
+                my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+                my $sth = $dbh->prepare("SET NAMES 'utf8'");
+                my $rv  = $sth->execute;
+
+                find(
+                    {
+                        wanted      => sub { index_files($dbh) },
+                        no_chdir    => 1,
+                        postprocess => sub { index_destinations($dbh) }
+                    },
+                    $e->fullname
+                );
+                $sth->finish;
+                $dbh->disconnect();
+                exit(0);
+            }
+            push( @pids, $pid );
+        }
+    }
+    elsif ( $e->IN_CLOSE_WRITE ) {
+
+        #print $e->cookie . "\t" . $e->fullname . "IN_CLOSE_WRITE\n";
+
+        #$path = decode( 'utf-8', $e->fullname );
+        #$quotedpath = $dbh->quote($path);
+
+        unless ( $pid = fork ) {
+
+            #system("renice -n 5 -p $$");
+
+            if ( ( -f $e->fullname ) && ( $e->fullname =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $e->fullname =~ /\/\..*$|\~.*$/ ) ) {
+                $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+                $sth = $dbh->prepare("SET NAMES 'utf8'");
+                $rv  = $sth->execute;
+                pstack::feedstack( $dbh, $e->fullname, 0 );
+                $sth->finish;
+                $dbh->disconnect();
+            }
+            exit(0);
+        }
+        push( @pids, $pid );
+        if ( $e->fullname =~ /\.(avi|mp4|mts|mov)$/i ) {
+            $videoEncodePID = $pid;
+        }
+    }
+    elsif ( $e->IN_MOVED_FROM ) {
+
+        #print $e->cookie . "\t" . $e->fullname . "IN_MOVED_FROM\n";
+        $source{ $e->cookie } = $e->fullname;
+
+        #$source{ $e->cookie } =~ s/\Q$basepath//;
+    }
+    elsif ( $e->IN_MOVED_TO ) {
+
+        if ( $e->IN_ISDIR ) {
+
+            #If a directory is moved, the watcher for all its subdirectories need to be renewed, otherwise they will return a fullname relative to the old parrent directory
+            find( \&wanted, $e->fullname );
+            $time = time();
+            $dbh  = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+            $sth = $dbh->prepare("SET NAMES 'utf8'");
+            $rv  = $sth->execute;
+            $path = decode( 'utf-8', $e->fullname );
+            $path =~ s/$basepath{'Document'}\///ee;
+            $quotedpath = $dbh->quote($path);
+
+	    $oldDestination = decode( 'utf-8', $source{ $e->cookie });
+	    $oldDestination =~ s/$basepath{'Document'}\///ee;
+	    $newDestination = decode( 'utf-8', $e->fullname );
+	    $newDestination =~ s/$basepath{'Document'}\///ee;
+
+	    #$sth = $dbh->prepare( "DELETE FROM `Destinations` where `Destination_md5`='" . md5_hex($oldDestination) . "'" );
+	    #$rv = $sth->execute;
+	    #$sth = $dbh->prepare( "INSERT INTO `Destinations` SET `checked`=$time, `Destination`=$quotedpath, `Destination_md5`='" . md5_hex($path) . "'" );
+	    #print "INSERT INTO `Destinations` SET `checked`=$time, `Destination`=$quotedpath, `Destination_md5`='" . md5_hex($path) . "'\n";
+	    #$rv = $sth->execute;
+
+
+            print "SELECT `Destination`,`Destination_md5` FROM `Destinations` WHERE `Destination` LIKE ".$dbh->quote($oldDestination."%")."\n";
+            $sth     = $dbh->prepare("SELECT `Destination`,`Destination_MD5` FROM `Destinations` WHERE `Destination` LIKE ".$dbh->quote($oldDestination."%"));
+            $rv      = $sth->execute;
+            $results = $sth->fetchall_hashref('Destination');
+            foreach $row ( keys %$results ) {
+                $newPath = $results->{$row}->{'Destination'};
+		$newPath =~ s/\Q$oldDestination/$newDestination/;
+		print "UPDATE `Destinations` SET `Destination` =" . $dbh->quote($newPath) . ", `Destination_md5` = '" . md5_hex($newPath) . "' WHERE `Destination_md5` = '$results->{$row}->{'Destination_MD5'}'\n";
+		$sth = $dbh->prepare( " UPDATE `Destinations` SET `Destination` =" . $dbh->quote($newPath) . ", `Destination_md5` = '" . md5_hex($newPath) . "' WHERE `Destination_md5` = '$results->{$row}->{'Destination_MD5'}'" );
+
+		$rv = $sth->execute;
+            }
+
+            $sth->finish;
+            $dbh->disconnect();
+        }
+        unless ( $pid = fork ) {
+
+            #system("renice -n 5 -p $$");
+            $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+            $sth = $dbh->prepare("SET NAMES 'utf8'");
+            $rv  = $sth->execute;
+
+            #print $e->cookie . "\t" . $e->fullname . "IN_MOVED_TO\n";
+            if ( $e->IN_ISDIR ) {
+
+                #print "Handle Directory\n";
+                $path = decode( 'utf-8', $source{ $e->cookie } );
+                $quotedpath = $dbh->quote( $path . "%" );
+
+                #$quotedpath =~ s/\Q$basepath//;
+                $sth     = $dbh->prepare("SELECT `path`,`Media` FROM `Documents` WHERE `path` LIKE $quotedpath");
+                $rv      = $sth->execute;
+                $results = $sth->fetchall_hashref('path');
+                foreach $row ( keys %$results ) {
+                    $newPath = $results->{$row}->{'path'};
+                    $from    = $source{ $e->cookie };
+                    $to      = $e->fullname;
+
+                    #$to =~ s/\Q$basepath//;
+                    $newPath =~ s/\Q$from/$to/;
+                    $newRelPath = $newPath;
+                    $newRelPath =~ s/\Q$basepath{$results->{$row}->{'Media'}}//;
+                    $sth = $dbh->prepare( " UPDATE `Documents` SET `path` =" . $dbh->quote($newPath) . ", `relpath` = " . $dbh->quote($newRelPath) . "WHERE path = " . $dbh->quote( $results->{$row}->{'path'} ) );
+
+                    #print " UPDATE `Documents` SET `path` =" . $dbh->quote($newPath) . " WHERE path = " . $dbh->quote( $results->{$row}->{'path'} ) . "\n";
+                    $rv = $sth->execute;
+                }
+            }
+            else {
+                #print " Handle file \n ";
+                $path          = decode( 'utf-8', $e->fullname );
+                $quotedpath    = $dbh->quote($path);
+                $quotedrelpath = $quotedpath;
+                $sth           = $dbh->prepare( "SELECT `path`,`Media` FROM `Documents` WHERE `path` = " . $dbh->quote( decode( 'utf-8', $source{ $e->cookie } ) ) );
+                $rv            = $sth->execute;
+                if ( ( $sth->rows() == 0 ) || ( $source{ $e->cookie } =~ /\.tmp$/i ) ) {
+                    pstack::feedstack( $dbh, $e->fullname, 0 );
+                }
+                else {
+                    $results = $sth->fetchrow_hashref;
+                    $quotedrelpath =~ s/\Q$basepath{$results->{'Media'}}//;
+                    $sth = $dbh->prepare( " UPDATE `Documents` SET `path` = $quotedpath , `relpath` = $quotedrelpath WHERE path = " . $dbh->quote( decode( 'utf-8', $source{ $e->cookie } ) ) );
+
+                    #print " UPDATE `Documents` SET `path` = $quotedpath WHERE path = " . $dbh->quote( decode( 'utf-8', $source{ $e->cookie } ) ) . "\n";
+                    $rv = $sth->execute;
+                }
+            }
+            $sth->finish;
+            $dbh->disconnect();
+            exit(0);
+        }
+        push( @pids, $pid );
+        if ( $e->fullname =~ /\.(avi|mp4|mts|mov)$/i ) {
+            $videoEncodePID = $pid;
+        }
+        delete $source{ $e->cookie };
+    }
+    elsif ( $e->IN_MODIFY ) {
+
+        #print $e->cookie . " \t " . $e->fullname . " IN_MODIFY \n ";
+    }
+
+    #$sth->finish;
+    #$dbh->disconnect();
+}
+
+while ($continue) {
+    if ( scalar @pids > 0 ) {
+        my $i = 0;
+
+        #for ( my $i = 0, $i < scalar(@pids), ++$i ) {
+        while ( $i < scalar(@pids) ) {
+            if ( waitpid( $pids[$i], WNOHANG ) != 0 ) {
+                if ( $pids[$i] == $videoEncodePID ) {
+                    $videoEncodePID = 0;
+                }
+                splice( @pids, $i, 1 );
+
+            }
+
+            #print "-$i- ".$pids[$i]." ". waitpid( $pids[$i], WNOHANG ).", ";
+            ++$i;
+        }
+
+        #print "\n";
+    }
+
+    if ( scalar(@events) && ( scalar(@pids) < 2 * $CPUs ) && ( $videoEncodePID == 0 ) ) {
+        do_it( shift(@events) );
+    }
+
+    #$inotify->poll;
+    push( @events, $inotify->read );
+    if ( scalar(@events) || scalar(@pids) ) {
+        if ( !-e "/home/pstack/bin/FriendlyStack.busy" ) {
+            system("touch /home/pstack/bin/FriendlyStack.busy");
+        }
+    }
+    else {
+        if ( -e "/home/pstack/bin/FriendlyStack.busy" ) { unlink("/home/pstack/bin/FriendlyStack.busy"); }
+    }
+    if ( scalar(@events) == 0 || $videoEncodePID != 0 ) {
+        select( undef, undef, undef, 0.1 );    #Used to sleep
+    }
+
+}
+unlink("/var/run/FriendlyStack.pid");
+exit(0);
+
+sub get_pidfile {
+
+    # the filename should be passed in as a parameter
+    my $filename = shift;
+    open FILE, $filename or die "Could not read from $filename, program halting.";
+
+    # read the record, and chomp off the newline
+    chomp( my $record = <FILE> );
+    close FILE;
+    return $record;
+}

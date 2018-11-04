@@ -1,0 +1,1 @@
+KERNEL=="sd*", SUBSYSTEM=="block", DRIVERS=="usb-storage", ATTR{size}!="0", SYMLINK+="backup%n"

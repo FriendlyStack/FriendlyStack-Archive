@@ -1,0 +1,156 @@
+#!/usr/bin/perl
+use Time::localtime;
+use POSIX ":sys_wait_h";
+use Proc::Daemon;
+use IO::Socket::INET;
+
+if ( -e '/var/run/pstack.pid' ) {
+    if ( kill 0, get_pidfile('/var/run/pstack.pid') ) { exit 0 }
+}
+
+my $daemon = Proc::Daemon->new(
+    pid_file => '/var/run/pstack.pid',
+    work_dir => '/home/pstack/bin',
+    setuid   => '0',
+    setgid   => '0',
+
+    #child_STDOUT => '+>>FriendlyStackWatcher.log',
+
+    #child_STDERR => '+>>FriendlyStackWatcher.log',
+    child_STDOUT => '/dev/null',
+    child_STDERR => '/dev/null',
+
+    #file_umask   => '0666'
+);
+if ( $daemon->Status('/var/run/pstack.pid') ) { exit 0 }
+
+$daemon->init();
+my $continue = 1;
+
+$SIG{TERM} = sub { $continue = 0 };
+
+my $grace = 0;
+while ( ( !( -e "/dev/pcontrol" ) ) && $continue ) {
+    sleep 1;
+    ++$grace;
+    if ( $grace > 10 ) { $continue = 0; }
+}
+system("stty -F /dev/pcontrol cs8 19200 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts");
+while ( ( !open( $T, "+<", "/dev/pcontrol" ) ) && $continue ) { sleep 1; }
+select( ( select($T), $| = 1 )[0] );
+
+#Enable Capacytive Button
+
+print $T chr(0x02) . "9A\n";
+sleep 4;
+print $T chr(0x02) . "9i\n";
+print $T chr(0x02) . "9b\n";
+print $T chr(0x02) . "9u\n";
+print $T chr(0x02) . "9W\n";
+print $T chr(0x02) . "9E\n";
+print $T chr(0x02) . "9a\n";
+
+#print $T chr(0x02)."\n";
+my $ip = get_local_ip_address();
+print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+
+while ( $continue && !( -e "/dev/mapper/pstack" ) ) {
+    $ip = get_local_ip_address();
+    print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+    if ( $action = CheckHandle($T) ) {
+        print $T chr(0x02) . "9A\n";
+        if ( $action =~ /LAN/ ) {
+            ($wireless) = `ip link show` =~ /\d+: (w\w+):/gs;
+            system("ifdown $wireless");
+            `ip link set $wireless down`;
+            ($ethernet) = `ip link show` =~ /\d+: (e\w+):/gs;
+            system("ifdown $ethernet");
+            system("ifup $ethernet");
+
+            #system("service networking restart");
+
+            print $T chr(0x02) . "9u\n";
+            print $T chr(0x02) . "9a\n";
+        }
+
+        print $T chr(0x02) . "9E\n";
+        print $T chr(0x02) . "9a\n";
+        print $T chr(0x02) . "9u\n";
+    }
+    print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Locked!" ) . "\n";
+
+}
+if ( -e "/dev/mapper/pstack" ) {
+    system("mount /dev/mapper/pstack /home/pstack");
+    print $T chr(0x02) . "9A\n";
+    print $T chr(0x02) . "9W\n";
+    print $T chr(0x02) . "9e\n";
+    print $T chr(0x02) . "0Unlocking..." . "\n";
+    print $T chr(0x02) . "1FriendlyStack" . "\n";
+}
+else {
+    # If the system is connected via a wireless interface it will still try to bring up the wired ethernet interface during the first few minutes after boot.
+    # If this is still ongoimg durin shutdown we will kill the corresponding process to speed things up.
+    `ip link show` =~ /\d+: (e\w+):/gs;
+    system("kill \$(lsof -t /run/network/ifstate.$1)");
+
+    print $T chr(0x02) . "9A\n";
+    print $T chr(0x02) . "9W\n";
+    print $T chr(0x02) . "9e\n";
+    print $T chr(0x02) . "0Bye bye..." . "\n";
+    print $T chr(0x02) . "1FriendlyStack" . "\n";
+    sleep(3);
+    print $T chr(0x02) . "0" . "\n";
+    print $T chr(0x02) . "1" . "\n";
+    print $T chr(0x02) . "9U\n";
+    print $T chr(0x02) . "9S\n";
+}
+
+close($T);
+
+unlink("/var/run/pstack.pid");
+exit(0);
+
+sub get_pidfile {
+
+    # the filename should be passed in as a parameter
+    my $filename = shift;
+    open FILE, $filename or die "Could not read from $filename, program halting.";
+
+    # read the record, and chomp off the newline
+    chomp( my $record = <FILE> );
+    close FILE;
+    return $record;
+}
+
+sub get_local_ip_address {
+    my ($local_ip_address) = `hostname -I` =~ /^(\d+\.\d+\.\d+\.\d+).*$/;
+
+    if   ($local_ip_address) { return $local_ip_address; }
+    else                     { return ("No Network!"); }
+}
+
+sub CheckHandle {
+    my ($timeout)    = 1;     # Don't wait.
+    my ($rfd)        = '';    # Initialize with string only
+    my ($filehandle) = @_;
+    vec( $rfd, fileno($filehandle), 1 ) = 1;
+
+    # Wait for something to happen, and make sure
+    # that it happened to the right filehandle.
+    if ( select( $rfd, undef, undef, $timeout ) >= 0
+        && vec( $rfd, fileno($filehandle), 1 ) )
+    {
+
+        # Something came in!
+        my ($buffer);
+
+        #read ($filehandle, $buffer, $block_size);
+        $buffer = <$T>;
+        chomp($buffer);
+
+        return $buffer;
+    }
+
+    return;
+}

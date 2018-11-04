@@ -1,0 +1,11 @@
+ATTRS{idVendor}=="05ac", GOTO="libgphoto2_rules_end"
+ACTION!="add", GOTO="libgphoto2_rules_end"
+SUBSYSTEM!="usb", GOTO="libgphoto2_usb_end"
+ENV{ID_USB_INTERFACES}=="", IMPORT{builtin}="usb_id"
+ENV{ID_USB_INTERFACES}=="*:060101:*", ENV{ID_GPHOTO2}="1", ENV{GPHOTO2_DRIVER}="PTP", MODE="0664", GROUP="plugdev", SYMLINK+="camera"
+ATTRS{idVendor}=="05ac", SYMLINK-="camera"
+
+LABEL="libgphoto2_rules_end"
+#SUBSYSTEM=="usb",ACTION=="add", ATTRS{idVendor}=="05ac", SYMLINK+="apple"
+SUBSYSTEM=="usb",ACTION=="add", ATTRS{idVendor}=="05ac", RUN+="/usr/bin/touch /tmp/apple.FriendlyStack", SYMLINK+="apple"
+SUBSYSTEM=="usb",ACTION=="remove", ATTRS{idVendor}=="05ac", RUN+="/bin/rm /tmp/apple.FriendlyStack", SYMLINK-="apple"

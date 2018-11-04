@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+
+#Determine avaiable space on volume
+`df -h --output=avail /home/pstack` =~ /(\d+)(\w{1})/;
+$availableSpace=$1;
+$availableSpaceUnit=$2;
+
+
+#Stop services relevant for FrendlyStack
+system("service smbd stop");
+system("service mysql stop");
+system("service FriendlyStackWatcher stop");
+system("service pstack stop");
+
+
+system("fallocate -l ".$availableSpace*0.8."$availableSpaceUnit /home/pstack.crypt");
+system("echo -n \"test\" | cryptsetup luksFormat /home/pstack.crypt -");
+system("echo -n \"test\" | cryptsetup luksOpen /home/pstack.crypt pstack -");
+system("mkfs.ext4 -j /dev/mapper/pstack");
+system("cryptsetup luksClose pstack");
+
+
+
+#Start services relevant for FrendlyStack
+system("service smbd start");
+system("service mysql start");
+system("service FriendlyStackWatcher start");
+system("service pstack start");

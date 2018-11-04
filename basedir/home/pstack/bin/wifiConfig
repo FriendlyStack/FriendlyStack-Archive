@@ -1,0 +1,109 @@
+#!/usr/bin/perl
+
+
+##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
+##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+##
+##This program is free software: you can redistribute it and/or modify
+##it under the terms of the GNU Affero General Public License as
+##published by the Free Software Foundation, either version 3 of the
+##License, or (at your option) any later version.
+##
+##This program is distributed in the hope that it will be useful,
+##but WITHOUT ANY WARRANTY; without even the implied warranty of
+##MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##GNU Affero General Public License for more details.
+##
+##You should have received a copy of the GNU Affero General Public License
+##along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+my $wifi = 0;
+my $i    = 0;
+open( my $fh, "ip link show 2>&1 |" );
+while (<$fh>) {
+    if    ( $_ =~ /\d+: (w\w+):/ ) { $wireless = $1; }
+    elsif ( $_ =~ /\d+: (e\w+):/ ) { $ethernet = $1; }
+}
+close $fh or die $!;
+if ( `route` =~ /default\s+gateway\s+0\.0\.0\.0\s+UG\s+0\s+0\s+0\s+$wireless/ ) { $wifi = 1; }
+if ( !scalar(@ARGV) ) {
+    system("ip link set $wireless up");
+    open( $fh, "/sbin/iwlist $wireless scanning  2>&1 |" );
+    while (<$fh>) {
+        if ( $_ =~ /ESSID:\"(\w+)\"/ ) { print "<option>$1</option>\n"; }
+    }
+    close $fh or die $!;
+
+    #system("ip link set $wireless down");
+}
+else {
+    ( $ssid, $password ) = @ARGV;
+    ($psk) = `wpa_passphrase $ssid $password` =~ /psk\=(\w+)/;
+    if ($wifi) {
+        open my $fh, '<', "/etc/network/interfaces.d/wireless" or die "error opening $filename: $!";
+        $backup = do { local $/; <$fh> };
+        close $fh or die $!;
+    }
+    else {
+        open my $fh, '<', "/etc/network/interfaces" or die "error opening $filename: $!";
+        $backup = do { local $/; <$fh> };
+        $backup =~ s/auto\s+$ethernet/allow-hotplug $ethernet/;
+        close $fh or die $!;
+        open my $fh, '>', "/etc/network/interfaces" or die "error opening $filename: $!";
+        print $fh "$backup";
+        close $fh or die $!;
+    }
+
+    open( $fh, ">", "/etc/network/interfaces.d/wireless" );
+    print $fh "auto $wireless\niface $wireless inet dhcp\nwpa-ssid $ssid\nwpa-psk $psk";
+    close $fh or die $!;
+    system("ifdown $ethernet");
+    #system("ip link set $ethernet down");
+    system("kill \$(lsof -t /run/network/ifstate.$wireless)");
+    system("ifdown $wireless 2>&1");
+    while (`lsof \"/run/network/ifstate.$wireless\"`) {
+        sleep(1);
+    }
+    system("ip link set $wireless up");
+    open( my $fh, "ifup $wireless 2>&1 |" );
+    while (<$fh>) {
+        print;
+        print "$i\n";
+        ++$i;
+        if ( $i > 20 ) { last; }
+    }
+    system("ifup $ethernet");
+    if ( $i > 20 ) {
+        print "Failed!\n";
+        system("kill \$(lsof -t /run/network/ifstate.$wireless)");
+        if ($wifi) {
+            open my $fh, '>', "/etc/network/interfaces.d/wireless" or die "error opening $filename: $!";
+            print $fh $backup;
+            close $fh or die $!;
+            system("ifdown $wireless 2>&1");
+            while (`lsof \"/run/network/ifstate.$wireless\"`) {
+                sleep(1);
+            }
+            system("ifup $wireless 2>&1");
+        }
+        else {
+            open my $fh, '>', "/etc/network/interfaces.d/wireless" or die "error opening $filename: $!";
+            print $fh "#not configured\n";
+            close $fh or die $!;
+            system("ifdown $wireless");
+            `ip link set $wireless down`;
+            system("ifdown $ethernet");
+            system("ifup $ethernet");
+
+        }
+    }
+    else {
+        print "success!\n";
+        system("iwconfig $wireless");
+        system("ifconfig $wireless");
+        if ( !$wifi ) {
+        }
+    }
+}
+system("/home/pstack/bin/updateCrt.sh");

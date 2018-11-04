@@ -1,0 +1,18 @@
+FriendlyStackWatcher:    $dbh      = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:        #$dbh  = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:        #$dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:        $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:    #$dbh ||= DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:                my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:                my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:                $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:            $dbh  = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+FriendlyStackWatcher:            $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack:                    $dbh  = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack:            #my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack:    my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack:                    my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack:    my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack:                my $dbh                = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+pstack.pm:    #$dbh = DBI->connect('dbi:mysql:dbname=pStack;host=localhost','test','test',{AutoCommit=>1,RaiseError=>1,PrintError=>0});
+test.pl:                my $dbh                = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );

@@ -1,0 +1,130 @@
+#!/usr/bin/perl
+BEGIN { unshift( @INC, "/home/pstack/bin" ); }
+use pstack;
+use File::Basename;
+use File::Path qw(make_path remove_tree);
+use DBI;
+use Encode qw(encode decode);
+use Lingua::Identify qw(:language_identification);
+Lingua::Identify::deactivate_all_languages();
+Lingua::Identify::activate_language('en');
+Lingua::Identify::activate_language('de');
+Lingua::Identify::activate_language('fr');
+Lingua::Identify::activate_language('it');
+
+my $BASEDIR   = "/home/pstack/Documents";
+my $FUSER     = "root";
+my $FGROUP    = "FriendlyStack";
+my $GS        = "/usr/bin/gs";
+my $PDFTOTEXT = "/usr/bin/pdftotext";
+my $TESSERACT = "/usr/local/bin/tesseract";
+my $scandir       = "/home/pstack/ScanInbox";
+
+my $lines = 1;
+my $pages = 1;
+
+open(PWHANDLE,"<","/home/pstack/bin/mysql.pwd");
+my $sqlPassword = <PWHANDLE>;
+chomp($sqlPassword);
+close(PWHANDLE);
+
+#Change this variable to switch between Tecceract and ABBYY OCR
+#my $OCR = 'ABBYYOCR';    #Value is ABBYYOCR or TESSERACT
+#my $OCR = 'NSOCR';    #Value is ABBYYOCR or TESSERACT
+
+my $OCR = 'TESSERACT';    #Value is ABBYYOCR or TESSERACT
+
+( $JOBID, $USER, $TITLE, $COPIES, $OPTIONS, $FILE ) = @ARGV;
+
+#$TITLE =~ s/[^A-Za-z0-9\-\. äöüÄÖÜ]/_/g;
+#$TITLE = decode( 'utf-8', $TITLE );
+$TITLE =~ s/\W/_/g;
+
+if ( !$FILE ) { $FILE = sprintf( "/var/spool/cups/d%05d-%03d", $JOBID, 1 ) }
+$PID        = $$;
+$LOG        = "/tmp/pstack.log";
+$ENV{'LOG'} = $LOG;
+open( LOG, ">>", $LOG );
+print LOG "\n$FILE $JOBID $USER $TITLE $COPIES $OPTIONS $ENV{'DEVICE_URI'}  $ENV{'APPLE_LANGUAGE'}\n";
+if ( scalar @ARGV == 0 ) {
+    print "direct pstack \"Unknown\" \"Print jobs to the destinations specified in the device-URI\"\n";
+    exit 0;
+}
+elsif ( scalar @ARGV < 5 ) {
+    print "Usage: pstack job-id user title copies options [file]\n";
+    print "Sample device-URI: 'pstack:Versicherung/Krankenkasse'\n";
+    print "This writes the file to the specified destination and updates the database\n\n";
+    print "To install a prinqueue use 'lpadmin -p <printer-name> -v pstack:<destination> -E [-P <path to PPD>'\n\n";
+    exit 1;
+}
+$ENV{'DEVICE_URI'} =~ /pstack:(.*)$/;
+$destination_md5 = $1;
+
+$dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', $sqlPassword, { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+my $query = "select * from Destinations where Destination_MD5='$1'";
+$sth = $dbh->prepare($query);
+my $rv = $sth->execute;
+if ( $results = $sth->fetchrow_hashref() ) {
+    $DESTINATION = encode( 'utf-8', $$results{'Destination'} );
+}
+
+#For debugging
+#print LOG "$query\n";
+
+if ( `lpstat -a $ENV{'PRINTER'}` =~ /not accepting/ ) {
+    print "ERROR: printer $ENV{'PRINTER'} is not aacepting jobs...\n";
+    exit 1;
+}
+
+@mdate = localtime( time() );
+$ts = sprintf( "%4d-%02d-%02d %02d-%02d-%02d ", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
+
+$defaultdestination = "$BASEDIR/$DESTINATION";
+if ( !( ( -d "$defaultdestination" ) && ( -e "$defaultdestination" ) ) ) {
+    make_path( $defaultdestination, { owner => $FUSER, group => $FGROUP, mode => 0755 } );
+
+    my @dirs = split( '/', "$DESTINATION" );
+    $dir = $BASEDIR;
+    while (@dirs) { $dir = $dir . '/' . shift(@dirs); chmod 0775, $dir; }
+}
+
+#`cupsfilter -d extra -p /usr/share/cups/model/generic.ppd -m application/pdf -j $JOBID > \"$defaultdestination/$ts $TITLE $JOBID.pdf\"`;
+`cupsfilter -m application/pdf -j $JOBID > \"$defaultdestination/$ts $TITLE $JOBID.pdf\"`;
+my $scommand = "/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar ExtractText \"$defaultdestination/$ts $TITLE $JOBID.pdf\" -ignoreBeads -sort -console -encoding UTF-8 2>/dev/null";
+$content = `$scommand`;
+$content =~ s/[^a-zA-Z0-9 _.\/\näöü-]//g;
+$scommand = "VAR1=\$(cat <<EndOfFile\n$content\nEndOfFile\n) && echo \"\${VAR1}\" | /home/pstack/bin/cld2 2>/dev/null";
+($language) = `$scommand` =~ /Summary: (\w+)\*{0,1}/;
+$lines = () = $content =~ /.+\n/g;
+$pages = `$GS -q -dNODISPLAY -dQUIET -dBATCH -dNOPAUSE -dNOPROMPT -c "(""$defaultdestination/$ts $TITLE $JOBID.pdf"") (r) file runpdfbegin pdfpagecount = quit)" | grep -v Warning`;
+if ( $language eq "Unknown" || $content =~ /OFFENDING COMMAND/ || $lines/$pages < 4) {
+    `cupsfilter -m application/postscript -j $JOBID > "/home/pstack/tmp/$TITLE $JOBID.ps"`;
+    #`convert -density 300 \"/home/pstack/tmp/$ts $TITLE $JOBID.ps\" -background white -alpha Off \"/home/pstack/tmp/$ts $TITLE $JOBID.tiff\"`;
+    #`gm convert -quality 100 -density 300 "/home/pstack/tmp/$ts $TITLE $JOBID.ps" "/home/pstack/tmp/$ts $TITLE $JOBID.tiff"`;
+    #`/usr/bin/gs -r600 -dQUIET -dBATCH -dNOPAUSE -sDEVICE=tiff24nc -sOutputFile="/home/pstack/tmp/$ts $TITLE $JOBID.tiff" "/home/pstack/tmp/$ts $TITLE $JOBID.ps"`;
+    `/usr/bin/gs -r300 -dQUIET -dBATCH -dNOPAUSE -sDEVICE=tiff24nc -sOutputFile="$scandir/scan-$TITLE $JOBID-%04d.tif" "/home/pstack/tmp/$TITLE $JOBID.ps"`;
+    #`convert -density 300 \"/home/pstack/tmp/$TITLE $JOBID.ps\" -background white -alpha Off \"$scandir/scan-$TITLE $JOBID-%04d.tif\"`;
+    #`gm convert -density 300 +adjoin \"/home/pstack/tmp/$TITLE $JOBID.ps\" \"$scandir/scan-$TITLE $JOBID-%04d.tif\"`;
+    open(JOB,">","$scandir/$TITLE $JOBID.jobb");
+    print JOB "$destination_md5";
+    close(JOB);
+    rename("$scandir/$TITLE $JOBID.jobb","$scandir/$TITLE $JOBID.job");
+    #if ( $OCR eq "NSOCR" ) {
+    #system("/home/pstack/bin/FriendlyStackOCR \"/home/pstack/tmp/$ts $TITLE $JOBID.tiff\" \"$defaultdestination/$ts $TITLE $JOBID.pdf\"");
+    #}
+    #elsif ( $OCR eq "TESSERACT" ) {
+    #`$TESSERACT --oem 1 -l deu+fra+eng "/home/pstack/tmp/$ts $TITLE $JOBID.tiff" "$defaultdestination/$ts $TITLE $JOBID" pdf > /dev/null 2>&1`;
+    #}
+    #elsif ( $OCR eq "ABBYYOCR" ) {
+    #`/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -rl German English French Italian -if "/home/pstack/tmp/$ts $TITLE $JOBID.tiff" -ido -f pdf -ptem ImageOnText -pcpf Jpeg -pfs Balanced -pmm disable -of "$defaultdestination/$ts $TITLE $JOBID.pdf"`;
+    #}
+    #unlink( "/home/pstack/tmp/$ts $TITLE $JOBID.ps", "/home/pstack/tmp/$ts $TITLE $JOBID.tiff" );
+    unlink( "/home/pstack/tmp/$TITLE $JOBID.ps", "$defaultdestination/$ts $TITLE $JOBID.pdf" );
+}
+close(LOG);
+my $uid = getpwnam $FUSER;
+my $gid = getgrnam $FGROUP;
+chown $uid, $gid, "$defaultdestination/$ts $TITLE $JOBID.pdf";
+chmod 0664, "$defaultdestination/$ts $TITLE $JOBID.pdf";
+$dbh->disconnect();
+exit 0;

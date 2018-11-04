@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+#Determine avaiable space on volume
+`df -h --output=avail /home/pstack` =~ /(\d+)(\w{1})/;
+$availableSpace=$1;
+$availableSpaceUnit=$2;
+
+
+#Stop services relevant for FrendlyStack
+system("service smbd stop");
+system("service nmbd stop");
+system("service mysql stop");
+
+
+system("echo -n \"$ARGV[0]\" | cryptsetup luksOpen /home/pstack.crypt pstack -");
+
+my $timer=0;
+while (! -d "/home/pstack/Documents" && $timer < 10) {
+sleep(1);
+++$timer;
+}
+
+if (-d "/home/pstack/Documents") {
+system("service pstack stop");
+system("service FriendlyStackWatcher stop");
+
+#Start services relevant for FrendlyStack
+system("service smbd start");
+system("service nmbd start");
+system("service mysql start");
+system("service FriendlyStackWatcher start");
+system("service pstack start");
+} else {
+system("service pstack start");
+}

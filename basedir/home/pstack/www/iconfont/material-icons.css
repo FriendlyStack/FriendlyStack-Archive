@@ -1,0 +1,121 @@
+@font-face {
+	font-family: 'Material Icons';
+	font-style: normal;
+	font-weight: 400;
+	src: url(MaterialIcons-Regular.eot); /* For IE6-8 */
+	src: local('Material Icons'),
+	local('MaterialIcons-Regular'),
+	url(MaterialIcons-Regular.woff2) format('woff2'),
+	url(MaterialIcons-Regular.woff) format('woff'),
+	url(MaterialIcons-Regular.ttf) format('truetype');
+}
+
+.material-icons {
+	font-family: 'Material Icons';
+	font-weight: normal;
+	font-style: normal;
+	font-size: 24px;  /* Preferred icon size */
+	display: inline-block;
+	line-height: 1;
+	text-transform: none;
+	letter-spacing: normal;
+	word-wrap: normal;
+	white-space: nowrap;
+	direction: ltr;
+
+	/* Support for all WebKit browsers. */
+	-webkit-font-smoothing: antialiased;
+	/* Support for Safari and Chrome. */
+	text-rendering: optimizeLegibility;
+
+	/* Support for Firefox. */
+	-moz-osx-font-smoothing: grayscale;
+
+	/* Support for IE. */
+	font-feature-settings: 'liga';
+}
+
+.material-icons.md-18 { font-size: 18px; }
+.material-icons.md-24 { font-size: 24px; }
+.material-icons.md-36 { font-size: 36px; }
+.material-icons.md-48 { font-size: 48px; }
+.material-icons.md-60 { font-size: 60px; }
+.material-icons.md-home { font-size: 92px; }
+.material-icons.md-destination { font-size: 24px; }
+
+.material-icons.md-dark-green { color: rgb(16, 50, 45); text-shadow: 6px 6px 10px rgba(0, 0, 0, 0.19); vertical-align: middle;}
+
+.material-icons.md-dark { color: rgba(0, 0, 0, 1); text-shadow: 6px 6px 10px rgba(0, 0, 0, 0.19); vertical-align: middle;}
+.material-icons.md-dark.md-inactive { color: rgba(0, 0, 0, 0.26); text-shadow: 6px 6px 10px rgba(0, 0, 0, 0.19); vertical-align: middle;}
+
+.material-icons.md-light { color: rgba(255, 255, 255, 1); vertical-align: middle; }
+.material-icons.md-light.md-inactive { color: rgba(255, 255, 255, 0.3); }
+
+div.preformated {
+	white-space: pre;
+}
+
+div.destination {
+	white-space: nowrap;
+}
+
+
+span.destination {
+	display: inline;
+	font: 15px sans-serif;
+	vertical-align: middle;
+	white-space: nowrap;
+	padding-left: 5px;
+}
+
+@media only screen and (min-width: 768px) {
+	.material-icons.md-destination { font-size: 24px;}
+	.material-icons.md-home { font-size: 60px;}
+	table#settings { width: 60% }
+        #home { margin-left:auto; margin-right:auto; display:block; text-align: center; padding: 0px 0px 20px 0px; }
+}
+
+@media only screen and (min-width: 1024px) {
+	.material-icons.md-destination { font-size: 24px;}
+	.material-icons.md-home { font-size: 60px;}
+	table#settings { width: 40% }
+        #home { margin-left:auto; margin-right:auto; display:block; text-align: center; padding: 0px 0px 20px 0px; }
+}
+
+@media only screen and (max-width: 767px) {
+	#freeSpace {margin-left:auto; margin-right:auto; display:block;}
+        #home { margin-left:auto; margin-right:auto; display:block; text-align: center; padding: 0px 0px 20px 0px; }
+	.material-icons.md-destination { font-size: 36px;}
+	.material-icons.md-home { font-size: 92;}
+	table#settings { width: 100% }
+}
+
+.shadow {
+	-webkit-filter: drop-shadow( 5px 5px 10px #666 );
+	filter: drop-shadow( 5px 5px 10px #666); /* Same syntax as box-shadow, except 
+	for the spread property */
+}
+
+table#settings {
+	background-color: rgb(255, 255, 255);
+	table-layout: auto;
+	border-collapse: collapse;
+	font-family: Verdana;
+	font-size: 14;
+	color: rgb(16, 50, 45);
+	white-space: nowrap;
+}
+
+p.heading {
+	font-family: Verdana;
+	font-size: 18;
+	font-weight: bold;
+	color: rgb(16, 50, 45);
+	padding: 10px 0px 0px 0px;
+}
+
+table .absorbing-column {
+	width: 100%;
+}
+
+

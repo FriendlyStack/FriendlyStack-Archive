@@ -1,0 +1,18 @@
+td {
+        padding: 2px;
+}
+td.form_heading {
+        font: 15px sans-serif;
+	font-weight: bold;
+        vertical-align: bottom;
+	height: 25px;
+}
+div.form_heading {
+        font: 15px sans-serif;
+	height: 30;
+	font-weight: bold;
+}
+p.form_heading {
+        display: inline-block;
+	padding-top: 7px;
+}

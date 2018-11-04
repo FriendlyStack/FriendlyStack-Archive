@@ -1,0 +1,1321 @@
+#!/usr/bin/perl
+
+
+##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
+##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+##
+##This program is free software: you can redistribute it and/or modify
+##it under the terms of the GNU Affero General Public License as
+##published by the Free Software Foundation, either version 3 of the
+##License, or (at your option) any later version.
+##
+##This program is distributed in the hope that it will be useful,
+##but WITHOUT ANY WARRANTY; without even the implied warranty of
+##MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##GNU Affero General Public License for more details.
+##
+##You should have received a copy of the GNU Affero General Public License
+##along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+BEGIN { unshift( @INC, "/home/pstack/bin" ); }
+use pstack;
+use Time::localtime;
+use IO::Socket::INET;
+use DBI;
+use File::Path qw(make_path remove_tree);
+use POSIX ":sys_wait_h";
+use Encode qw(encode decode);
+
+#use Linux::Inotify2;
+use File::Basename;
+use File::Find;
+use Image::ExifTool;
+use File::stat;
+use File::Copy;
+use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Proc::Daemon;
+use Config::General qw(ParseConfig SaveConfig SaveConfigString);
+
+#use Proc::PID::File;
+if ( -e '/var/run/pstack.pid' ) {
+    if ( kill 0, get_pidfile('/var/run/pstack.pid') ) { exit 0 }
+}
+
+my $daemon = Proc::Daemon->new(
+    pid_file => '/var/run/pstack.pid',
+    work_dir => '/home/pstack/bin',
+    setuid   => '0',
+    setgid   => '0',
+
+    #child_STDOUT => '+>>pstack.log',
+
+    #child_STDERR => '+>>pstack_error.log',
+    child_STDOUT => '/dev/null',
+    child_STDERR => '/dev/null',
+
+    #    file_umask   => '0666'
+);
+if ( $daemon->Status('/var/run/pstack.pid') ) { exit 0 }
+
+$daemon->init();
+my $continue = 1;
+$SIG{TERM} = sub { $continue = 0 };
+
+my $grace = 0;
+while ( ( !( -e "/dev/pcontrol" ) ) && $continue ) {
+    sleep 1;
+    ++$grace;
+    if ( $grace > 10 ) { $continue = 0; }
+}
+system("stty -F /dev/pcontrol cs8 19200 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts");
+while ( ( !open( $T, "+<", "/dev/pcontrol" ) ) && $continue ) { sleep 1; }
+select( ( select($T), $| = 1 )[0] );
+
+#Enable Capacytive Button
+
+print $T chr(0x02) . "9A\n";
+sleep 4;
+print $T chr(0x02) . "9i\n";
+print $T chr(0x02) . "9b\n";
+print $T chr(0x02) . "9u\n";
+print $T chr(0x02) . "9W\n";
+print $T chr(0x02) . "9w\n";
+print $T chr(0x02) . "9e\n";
+print $T chr(0x02) . "9a\n";
+
+#print $T chr(0x02)."\n";
+my $ip      = get_local_ip_address();
+my $success = 1;
+
+my $tempdir = "/home/pstack/tmp";
+
+#my $tempdir = "/ramdisk";
+
+my $scandir       = "/home/pstack/ScanInbox";
+my %scannerConfig = ParseConfig("FriendlyStack.conf");
+
+open(PWHANDLE,"<","/home/pstack/bin/mysql.pwd");
+my $sqlPassword = <PWHANDLE>;
+chomp($sqlPassword);
+close(PWHANDLE);
+
+#my $scandir            = "/ramdisk";
+my $threshhold         = 15;
+my $basepath           = "/home/pstack/Documents";
+my $pagecount          = 0;
+my $scannerstatus      = 0;
+my $status             = 0;                          # 0=Ready, 1=Finding Scanner, 2=License Server Down
+my $camera_detected    = 0;
+my $defaultdestination = "$basepath/Unsorted";
+my ( @mdate, $ts, $timesec, %goodpages, $x );
+my $FUSER              = "root";
+my $FGROUP             = "FriendlyStack";
+my $uid                = getpwnam($FUSER);
+my $gid                = getgrnam($FGROUP);
+my $BASEDIR            = "/home/pstack/Documents";
+my $scanner            = "";
+my $progress_indicator = '......';
+my $indexing_interval  = 60000;
+my $STATUS;
+my $resolution = 300;
+my $CPUs       = `/usr/bin/nproc`;
+chomp $CPUs;
+my $TESSERACT = `which tesseract`;
+chomp $TESSERACT;
+my $PDFTOTEXT = `which pdftotext`;
+chomp $PDFTOTEXT;
+
+#my $OCR_ENGINE = 'ABBYYOCR';    #Value is ABBYYOCR or TESSERACT
+
+my $OCR_ENGINE = 'TESSERACT';    #Value is ABBYYOCR or TESSERACT
+
+#my $OCR_ENGINE = 'NSOCR';    #Value is ABBYYOCR or TESSERACT
+
+my @imageDirectories = ( "/home/pstack/Inbox/Pictures", "/home/pstack/Inbox/PicturesOCR" );
+my @filequeue        = ();
+my @pids             = ();
+my @ocrpids          = ();
+my $ocrpid           = 0;
+my @ocrjobs          = ();
+my $ocrjob           = ();
+my $card_inserted    = 0;
+my $sd               = "";
+my $pid_mediaimport  = 0;
+my $pid_indexing     = 0;
+my $last_indexing    = 0;
+my @directories      = ( "/home/pstack/Documents", "/home/pstack/Multimedia" );
+
+if ( $OCR_ENGINE eq 'ABBYYOCR' ) {
+    while ( system("/usr/local/bin/abbyyocr11 -? >/dev/null 2>&1") != 0 ) {
+        print $T chr(0x02) . "0Waiting for" . "\n";
+        print $T chr(0x02) . "1OCR Lic. Server" . "\n";
+        sleep 1;
+    }
+}
+
+while ( ( -e "/dev/pcontrol" ) && $continue ) {
+    $ip = get_local_ip_address();
+    if ( system("/usr/bin/pgrep -F /var/run/FriendlyStackWatcher.pid") ) {
+        print $T chr(0x02) . "9E\n";
+        print $T chr(0x02) . "9a\n";
+        print $T chr(0x02) . "0Error: " . "\n";
+        print $T chr(0x02) . "1Watcher Service Down" . "\n";
+        while ( !( CheckHandle($T) =~ /Scan/ ) ) {
+            select( undef, undef, undef, 0.25 );    #Used to sleep
+        }
+        system("/etc/init.d/FriendlyStackWatcher start");
+        print $T chr(0x02) . "9u\n";
+        print $T chr(0x02) . "9e\n";
+        print $T chr(0x02) . "9a\n";
+    }
+    if ( $usbStatus ne `lsusb` ) {
+        $usbStatus = `lsusb`;
+        if ( ( ( length($scanner) == 0 ) || !( -e "/dev/bus/usb/$bus/$dev" ) ) && $continue ) {
+
+            open( $usbDevices, "<", \$usbStatus );
+            while (<$usbDevices>) {
+                $_ =~ /^Bus\s(\d{3})\sDevice\s(\d{3})\:\sID\s(\w{4})\:(\w{4})\s/;
+                ( $bus, $dev, $vendor, $product ) = ( $1, $2, $3, $4 );
+                if ( exists( $scannerConfig{"$vendor:$product"} ) ) {
+                    $scanner = $scannerConfig{"$vendor:$product"}{'DeviceName'};
+                    last;
+                }
+                else { $scanner = ""; }
+            }
+
+            close($usbDevices);
+
+        }
+    }
+    if ( -e "/tmp/restore" ) {
+        print $T chr(0x02) . "9A\n";
+        print $T chr(0x02) . "9i\n";
+        print $T chr(0x02) . "9p\n";
+        print $T chr(0x02) . "9b\n";
+        print $T chr(0x02) . "9u\n";
+        print $T chr(0x02) . "9W\n";
+        print $T chr(0x02) . "9e\n";
+        print $T chr(0x02) . "9a\n";
+
+        print $T chr(0x02) . "9A\n";
+        print $T chr(0x02) . "0Restore" . "\n";
+        print $T chr(0x02) . "1in Progress..." . "\n";
+        print $T chr(0x02) . "9R\n";
+        print $T chr(0x02) . "9u\n";
+
+        `service FriendlyStackWatcher stop`;
+        $rc = $rc + ( $? >> 8 );
+        `mount -t ntfs /dev/backup1 /mnt`;
+        $rc = $rc + ( $? >> 8 );
+        if ( $rc == 0 ) {
+            `mysql -p$sqlPassword -uroot pStack < /mnt/pStack_backup.sql`;
+            $rc = $rc + ( $? >> 8 );
+            `rsync -rtvWq --modify-window 1 --delete --safe-links /mnt/Documents /mnt/Multimedia /mnt/Previews /home/pstack/ >> /tmp/rsync.log 2>&1`;
+            $rc = $rc + ( $? >> 8 );
+            `sync`;
+            $rc = $rc + ( $? >> 8 );
+            `umount /mnt`;
+            $rc = $rc + ( $? >> 8 );
+            `chmod -R 0770 /home/pstack/Documents`;
+            $rc = $rc + ( $? >> 8 );
+            `chmod -R 0770 /home/pstack/Multimedia`;
+            $rc = $rc + ( $? >> 8 );
+            `chmod -R 0770 /home/pstack/Previews`;
+            $rc = $rc + ( $? >> 8 );
+            `chown -R root:FriendlyStack /home/pstack/Documents`;
+            $rc = $rc + ( $? >> 8 );
+            `chown -R root:FriendlyStack /home/pstack/Multimedia`;
+            $rc = $rc + ( $? >> 8 );
+            `chown -R root:FriendlyStack /home/pstack/Previews`;
+            $rc = $rc + ( $? >> 8 );
+        }
+        print $T chr(0x02) . "9r\n";
+        print $T chr(0x02) . "0Restore" . "\n";
+        print $T chr(0x02) . "1Completed!" . "\n";
+
+        if ( $rc != 0 ) {
+            print $T chr(0x02) . "9b\n";
+            print $T chr(0x02) . "9a\n";
+            print $T chr(0x02) . "9u\n";
+            print $T chr(0x02) . "9t\n";
+            print $T chr(0x02) . "9E\n";
+            print $T chr(0x02) . "0Restore Failed!" . "\n";
+            print $T chr(0x02) . "1Try again $rc" . "\n";
+
+            while ( !( CheckHandle($T) =~ /(Scan|Backup)/ ) ) {
+                select( undef, undef, undef, 0.25 );    #Used to sleep
+            }
+        }
+        print $T chr(0x02) . "9a\n";
+        print $T chr(0x02) . "9u\n";
+        print $T chr(0x02) . "9w\n";
+        `service FriendlyStackWatcher start`;
+        $rc = $rc + ( $? >> 8 );
+        unlink("/tmp/restore");
+
+    }
+    if ( $pid_mediaimport == 0 ) {
+        if ( ( $ocrpid == 0 ) && ( scalar @pids == 0 ) && ( length(`lpstat -W not-completed all`) == 0 ) && !-e "/home/pstack/bin/FriendlyStack.busy" ) {
+
+            # Insert indexing code here!
+            if ( $last_indexing == 0 ) { $last_indexing = time(); }
+            elsif ( ( ( time() - $last_indexing ) > $indexing_interval ) && ( $pid_indexing == 0 ) ) {
+                unless ( $pid_indexing = fork ) {
+                    my ( $path, $quotedpath, @mdate, $ts, $time, $rv, $dbh, $sth );
+                    $dbh  = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+                    $sth  = $dbh->prepare("SET NAMES 'utf8'");
+                    $rv   = $sth->execute;
+                    $sth  = $dbh->prepare("SET low_priority_updates=1");
+                    $rv   = $sth->execute;
+                    $time = time();
+                    my $printers = {};
+                    open( BLAH, "lpstat -v |" );
+                    while (<BLAH>) { $_ =~ /^device for (\w+)\: pstack\:(\w{32})$/; ${$printers}{$2} = $1; }
+                    close(BLAH);
+
+                    #find( { wanted => \&index_files, no_chdir => 1, follow => 1, postprocess => \&index_destinations }, @directories );
+                    find( { wanted => \&index_files, no_chdir => 1, postprocess => \&index_destinations }, @directories );
+                    find( { wanted => \&clean_previews, no_chdir => 1 }, ("/home/pstack/Previews/") );
+
+                    sub index_destinations {
+
+                        if ( ( -d $File::Find::dir ) && ( $File::Find::dir ne $directories[0] ) && !( $File::Find::dir =~ /^$directories[1]/ ) ) {
+                            $path = $File::Find::dir;
+                            $path =~ s/^$directories[0]\///;
+                            $path       = decode( 'utf-8', $path );
+                            $quotedpath = $dbh->quote($path);
+                            $sth        = $dbh->prepare("select ID from Destinations where `Destination`=$quotedpath");
+                            $rv         = $sth->execute;
+                            if ( $sth->rows() == 0 ) {
+                                $sth = $dbh->prepare( "INSERT INTO `Destinations` SET `checked`=$time, `Destination`=$quotedpath, `Destination_md5`='" . md5_hex( encode( 'utf-8', $path ) ) . "'" );
+                                $rv = $sth->execute;
+                            }
+                            else {
+                                $sth = $dbh->prepare("UPDATE LOW_PRIORITY `Destinations` SET `checked`=$time WHERE `Destination`=$quotedpath");
+                                $rv  = $sth->execute;
+                            }
+                            if ( exists ${$printers}{ md5_hex( encode( 'utf-8', $path ) ) } ) { delete ${$printers}{ md5_hex( encode( 'utf-8', $path ) ) }; }
+                        }
+                    }
+
+                    sub index_files {
+                        my $file = $_;
+                        if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(pdf|jpg|jpeg|png|bmp|r[a]?w2|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $File::Find::name =~ /\/\..*$|\~.*$/ ) ) {
+                            $path       = decode( 'utf-8', $File::Find::name );
+                            $quotedpath = $dbh->quote($path);
+                            @mdate      = CORE::localtime( stat($File::Find::name)->mtime );
+                            $ts         = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
+                            $sth        = $dbh->prepare("select ID from Documents where path=$quotedpath and timestamp(TS)=timestamp($ts)");
+                            $rv         = $sth->execute;
+                            if ( $sth->rows() == 0 ) {
+                                pstack::feedstack( $dbh, $File::Find::name, 0 );
+                            }
+                            else {
+                                $sth = $dbh->prepare("UPDATE LOW_PRIORITY `Documents` SET `checked`=$time WHERE path=$quotedpath and timestamp(TS)=timestamp($ts)");
+                                $rv  = $sth->execute;
+                            }
+                        }
+                    }
+
+                    sub clean_previews {
+                        my $preview = $_;
+                        if ( ( -f $File::Find::name ) && ( $preview =~ /(\d+)\.(png)/i ) ) {
+                            my $ID = $1;
+                            $sth = $dbh->prepare("select * from Documents where ID=$ID");
+                            $rv  = $sth->execute;
+                            if ( $sth->rows < 1 ) { unlink($File::Find::name); }
+                        }
+                    }
+
+                    $sth = $dbh->prepare("delete LOW_PRIORITY from `Documents` where `checked`<$time");
+                    $rv  = $sth->execute;
+                    $sth = $dbh->prepare("delete LOW_PRIORITY from `Destinations` where `checked`<$time");
+                    $rv  = $sth->execute;
+                    $sth->finish;
+                    $dbh->disconnect();
+                    foreach $key ( keys %{$printers} ) {
+                        if ( defined ${$printers}{$key} ) { system("lpadmin -x \"${$printers}{$key}\""); sleep 2; system("/etc/init.d/samba reload"); }
+                    }
+                    exit(0);
+                }
+                $busy = "]";
+            }
+            elsif ( $pid_indexing != 0 ) {
+                if ( waitpid( $pid_indexing, WNOHANG ) != 0 ) {
+                    $pid_indexing  = 0;
+                    $last_indexing = time();
+                    $busy          = "";
+                    print $T chr(0x02) . "9p\n";
+                    print $T chr(0x02) . "9w\n";
+                }
+            }
+            else {
+                $busy = "";
+                print $T chr(0x02) . "9p\n";
+                print $T chr(0x02) . "9w\n";
+            }
+        }
+        else {
+            print $T chr(0x02) . "9W\n";
+            $busy = "*";
+            print $T chr(0x02) . "9P\n";
+        }
+
+        #print $T chr(0x02)."9b\n";
+        #print $T chr(0x02)."9a\n";
+        #print $T chr(0x02)."9u\n";
+        print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+        if ( ( ( length($scanner) == 0 ) || !( -e "/dev/bus/usb/$bus/$dev" ) ) && $continue && ( localtime->sec() % 2 == 0 ) ) {
+            print $T chr(0x02) . "1No Scanner...!\n";
+        }
+        else {
+            print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" ) . "\n";
+        }
+    }
+    else {
+        print $T chr(0x02) . "0SD Card Import" . "\n";
+        print $T chr(0x02) . "1Don't Remove..." . "\n";
+
+    }
+
+    open( $CARDREADER, "/dev/usbsd" );
+    close($CARDREADER);
+    if ( ( $card_inserted == 0 ) && ( -e "/dev/usbsd1" ) ) {
+
+        #print "SD Card Inserted!\n";
+        $card_inserted = 1;
+        $sd            = "SD";
+        unless ( $pid = fork ) {
+            enumerate_sdcard( "/mnt", 0, 0 );
+            exit(0);
+        }
+        push( @pids, $pid );
+        $pid_mediaimport = $pid;
+
+    }
+    elsif ( ( !-e "/dev/usbsd1" ) && ( $card_inserted == 1 ) ) {
+
+        #print "SD Card Removed!\n";
+        $card_inserted = 0;
+        $sd            = "";
+    }
+    if ( !testBackupMedia() ) {
+        $bd = "BD";
+        print $T chr(0x02) . "9D\n";
+    }
+    else {
+        $bd = "";
+        print $T chr(0x02) . "9d\n";
+    }
+
+    #PTP Camera Import Stuff
+    #cd /home/pstack/Inbox/Pictures && gphoto2 --get-all-files --quiet
+    #if ( `gphoto2 --auto-detect` =~ /usb\:/ ) {
+    #if ( ( -e "/dev/libmtp-3-6" ) || ( -e "/dev/camera" ) ) {
+    #if ( scalar glob "/dev/libmtp*" ) || ( -e "/dev/camera" ) ) {
+    #if ( glob "/dev/libmtp* /dev/camera" ) {
+    #system("ls /dev/libmtp*");
+    #if ( ($? >> 8 == 0) || ( -e "/dev/camera" ) ) {
+    if ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /dev/apple*" ] } ) {
+    #if ( 0 + @{ [ glob "/dev/libmtp* /tmp/camera.FriendlyStack* /tmp/apple.FriendlyStack*" ] } ) {
+        my $rc = 0;
+        if ( $camera_detected == 0 ) {
+            $camera_detected = 1;
+            print $T chr(0x02) . "9A\n";
+            print $T chr(0x02) . "9W\n";
+            print $T chr(0x02) . "9B\n";
+	    sleep(10);
+            #if ( -e "/tmp/camera.FriendlyStack" ) {
+            if ( -e "/dev/camera" ) {
+		    sleep(7);
+                open( $STATUS, "cd /home/pstack/Inbox/Pictures && gphoto2 --get-all-files --force-overwrite --hook-script=/home/pstack/bin/hookup.sh 2>&1 |" );
+                my $picture_count = 0;
+                while (<$STATUS>) {
+                    ++$picture_count;
+                    print $T chr(0x02) . sprintf( "2%03d\n", $picture_count );
+                }
+                close($STATUS);
+                $rc = $?;
+            }
+            elsif ( -e "/dev/apple" ) {
+
+                #Some managed Apple devices behave unreliably, therefore it is required to unpair and pair them again
+                system("ifuse /mnt");
+                if ($?) {
+                    #system("idevicepair unpair");
+                    sleep(12);
+                    #system("idevicepair pair");
+                    system("ifuse /mnt");
+                }
+                $rc = $?;
+
+                #open( $STATUS, "find /mnt -type f -size +500k -iname \"*.jpg\" -ipath \"*DCIM*\" -exec cp -nv {} /home/pstack/Inbox/Pictures/ \\; |" );
+                open( $STATUS, "find /mnt -type f -size +100k -ipath \"*DCIM*\" -exec cp -npv {} /home/pstack/Inbox/Pictures/ \\; 2>&1 |" );
+                my $picture_count = 0;
+		#while ( <$STATUS> && ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /tmp/apple.FriendlyStack*" ] } ) ) {
+                while ( <$STATUS> && ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /dev/apple*" ] } ) ) {
+                    ++$picture_count;
+                    print $T chr(0x02) . sprintf( "2%03d\n", $picture_count );
+                }
+                close($STATUS);
+                $rc = $rc + $?;
+                system("fusermount -u /mnt");
+                $rc = $rc + $?;
+
+                #system("idevicepair unpair");
+                #$rc = $rc + $?;
+            }
+            else {
+                system("jmtpfs /mnt");
+                $rc = $?;
+
+                #open( $STATUS, "find /mnt -type f -size +500k -iname \"*.jpg\" -ipath \"*DCIM*\" -exec cp -nv {} /home/pstack/Inbox/Pictures/ \\; |" );
+                open( $STATUS, "find /mnt -type f -size +300k -ipath \"*DCIM*\" -exec cp -npv {} /home/pstack/Inbox/Pictures/ \\; 2>&1 |" );
+                my $picture_count = 0;
+                while ( <$STATUS> && ( 0 + @{ [ glob "/dev/libmtp* /dev/camera*" ] } ) ) {
+                    ++$picture_count;
+                    print $T chr(0x02) . sprintf( "2%03d\n", $picture_count );
+                }
+                close($STATUS);
+                $rc = $rc + $?;
+                system("fusermount -u /mnt");
+                $rc = $rc + $?;
+            }
+            if ($rc) {
+                print $T chr(0x02) . "9b\n";
+                print $T chr(0x02) . "9E\n";
+                print $T chr(0x02) . "0Transfer Failed!" . "\n";
+                print $T chr(0x02) . "1Try again" . "\n";
+                print $T chr(0x02) . "9a\n";
+                while ( !( CheckHandle($T) =~ /Scan/ ) ) {
+                    print $T chr(0x02) . "9W\n";
+                    select( undef, undef, undef, 0.25 );    #Used to sleep
+                }
+                print $T chr(0x02) . "9a\n";
+                print $T chr(0x02) . "9e\n";
+                print $T chr(0x02) . "9u\n";
+                print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+                print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" ) . "\n";
+            }
+            else {
+                print $T chr(0x02) . "9b\n";
+                print $T chr(0x02) . "9a\n";
+                print $T chr(0x02) . "9u\n";
+                print $T chr(0x02) . "9w\n";
+            }
+        }
+    }
+    else {
+        $camera_detected = 0;
+    }
+
+    #print scalar @ocrjobs . "\n"; # For debuging, print the number of queued OCR jobs. Please note, one OCR job may consist of a number of subjobs.
+    my @scannedfiles = glob("\"$scandir/*.job\"");
+    if ( scalar ( @scannedfiles[0] ) && ( $ocrpid == 0 ) ) {
+
+        #if ( @scannedfiles[0] =~ /$scandir\/(\d+)\.job/ ) {
+        if ( $scannedfiles[0] =~ /$scandir\/(.+)\.job/ ) {
+            $ocrjob = $1;
+            my $mode = "";
+            if   ( -s $scannedfiles[0] > 0) { $mode = "print" }
+            else                           { $mode = "scan" }
+
+            #print "$ocrjob\n";
+            unless ( $ocrpid = fork ) {
+                do_ocr( $ocrjob, $mode );
+                exit(0);
+            }
+        }
+    }
+
+    if ( $ocrpid != 0 ) {
+        if ( waitpid( $ocrpid, WNOHANG ) != 0 ) {
+            $ocrpid = 0;
+            $ocrjob = ();
+        }
+    }
+
+    while ( ( scalar @pids < ( $CPUs * 2 ) ) && ( scalar keys %filequeue > 0 ) && ( $ocrpid == 0 ) ) {
+        if ( scalar keys %filequeue > 0 ) {
+
+            my $file = ( keys %filequeue )[0];
+            unless ( $pid = fork ) {
+                picsort( $file, $filequeue{$file}{OCR}, $filequeue{$file}{Delete} );
+                exit(0);
+            }
+            push( @pids, $pid );
+            $pidss{$pid} = $file;
+            delete $filequeue{$file};    #new stuff
+        }
+    }
+    if ( ( scalar @pids == 0 ) && ( scalar keys %filequeue == 0 ) ) {
+
+        #find( { wanted => \&listfiles, no_chdir => 1 }, @directories );
+        find( { wanted => sub { listfiles( 0, 1 ) }, no_chdir => 1 }, $imageDirectories[0] );
+        find( { wanted => sub { listfiles( 1, 1 ) }, no_chdir => 1 }, $imageDirectories[1] );
+    }
+    if ( scalar @pids > 0 ) {
+        for ( my $a = 0 ; $a < scalar @pids ; ++$a ) {
+            if ( waitpid( $pids[$a], WNOHANG ) != 0 ) {
+                if ( $pids[$a] == $pid_mediaimport ) { $pid_mediaimport = 0; }
+                if ( exists $pidss{ $pids[$a] } ) { delete $filequeue{ $pidss{ $pids[$a] } }; delete $pidss{ $pids[$a] }; }
+                splice( @pids, $a, 1 );
+            }
+        }
+    }
+    if ( $action = CheckHandle($T) ) {
+        if ( ( !( length($scanner) == 0 ) && ( -e "/dev/bus/usb/$bus/$dev" ) ) && ( $action =~ /Scan/ ) ) {
+            print $T chr(0x02) . "9u\n";
+            print $T chr(0x02) . "9A\n";
+            print $T chr(0x02) . "0$ip" . "\n";
+            print $T chr(0x02) . "1Scanning..." . "\n";
+            $timesec       = time();
+            $success       = 0;
+            $pagecount     = 0;
+            $scannerstatus = 0;
+
+            #@mdate     = CORE::localtime($timesec);
+            #$ts        = sprintf( "%4d-%02d-%02d %02d-%02d-%02d ", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
+            #$destination = $defaultdestination . sprintf( "/%4d/%02d", $mdate[5] + 1900, $mdate[4] + 1 );
+            #%goodpages = ();
+            #my $x = 0;
+            #my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+
+            if ( $scannerConfig{"$vendor:$product"} ) {
+                open( $STATUS, "/usr/bin/scanimage --device-name=\"" . $scannerConfig{"$vendor:$product"}{'DeviceName'} . "\" --format=tiff --batch=$scandir/scan-$timesec-%03d.tif --resolution $resolution " . $scannerConfig{"$vendor:$product"}{'Configuration'} . " 2>&1 |" );
+            }
+
+            #select( ( select($STATUS), $| = 1 )[0] );
+            print $T chr(0x02) . "9B\n";
+            while (<$STATUS>) {
+
+                #if ( $_ =~ /Scanned\spage\s(\d+)\.\s\(scanner\sstatus\s\=\s5\)/ ) {
+                if ( $_ =~ /Scanned\spage\s(\d+)\.\s\(scanner\sstatus\s\=\s(\d)\)/ ) {
+                    $pagecount     = $1;
+                    $scannerstatus = $2;
+                    print $T chr(0x02) . "1Page $pagecount" . "\n";
+                    print $T chr(0x02) . sprintf( "2%03d\n", $pagecount );
+                }
+                elsif ( ( $_ =~ /(Document feeder out of documents|sane_start: Operation was cancelled)/ ) && ( $pagecount > 0 ) ) { $success = 1; }
+                if ( $scannerstatus == 5 ) {
+                    $success = 1;
+                }
+                elsif ( $scannerstatus == 7 ) {
+                    $success = 0;
+                }
+                else {
+                    $success = 0;
+                }
+
+                #if ( $scanner =~ /^imagescan.*$/ ) {
+                if (0) {
+                    if ( `imagescan scan` =~ /A multi page feed occurred in the auto document feeder.*/ ) {
+                        $success = 0;
+                    }
+                }
+
+            }
+            close($STATUS);
+            print $T chr(0x02) . "9b\n";
+            if (0) {
+
+                #if ( $scanner =~ /^imagescan.*$/ ) {
+                if ( `/usr/bin/imagescan scan 2>&1` =~ /Please load the document\(s\) into the Automatic Document Feeder.*/ ) {
+                    $success = 1;
+                }
+                else {
+                    $success = 0;
+                }
+            }
+
+            if ( $success == 1 ) {
+                if ( $pagecount > 0 ) {
+                    open( $FW, ">", "$scandir/$timesec.job" );
+
+                    #print $FW " ";
+                    close($FW);
+                }
+                $success = 0;
+            }
+            else {
+                unlink( glob( $scandir . "/scan-" . $timesec . "-*.tif" ) );
+                print $T chr(0x02) . "9E\n";
+                print $T chr(0x02) . "9a\n";
+                print $T chr(0x02) . "1Error: jammed!" . "\n";
+                while ( !( CheckHandle($T) =~ /Scan/ ) ) {
+                    select( undef, undef, undef, 0.25 );    #Used to sleep
+                }
+                print $T chr(0x02) . "9e\n";
+                print $T chr(0x02) . "9u\n";
+            }
+            print $T chr(0x02) . "9a\n";
+        }
+        elsif ( $action =~ /Backup/ ) {
+            if ( !testBackupMedia() ) {
+                print $T chr(0x02) . "9A\n";
+                print $T chr(0x02) . "0$ip" . "\n";
+                print $T chr(0x02) . "1Backup" . "\n";
+                print $T chr(0x02) . "9T\n";
+                print $T chr(0x02) . "9u\n";
+
+                if ( `ntfslabel /dev/backup1` !~ /FriendlyStack_BackupMedia/ ) {
+                    `wipefs -af /dev/backup`;
+                    `dd if=/dev/zero of=/dev/backup bs=512 count=100`;
+                    `cat /home/pstack/bin/my.layout | sfdisk /dev/backup --force`;
+
+                    #`partprobe /dev/backup`;
+                    while ( !-e "/dev/backup1" ) { sleep(1); }
+                    `mkntfs -f /dev/backup1`;
+                    `ntfslabel /dev/backup1 FriendlyStack_BackupMedia`;
+                }
+
+                #while ( !( CheckHandle($T) =~ /Scan/ ) ) {
+
+                #system("mount -t vfat -o utf8 /dev/backup1 /mnt");
+                #if ( !system("mount -t vfat -o utf8 /dev/backup1 /mnt") ) {
+                if ( !system("mount -t ntfs -o utf8 /dev/backup1 /mnt") ) {
+
+                    #if ( !system("mount /dev/backup1 /mnt") ) {
+
+                    #open( $STATUS, "rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --stats /home/pstack/Documents /home/pstack/Multimedia /home/pstack/Transcoded_Videos /mnt/ 2>&1 |" );
+                    #open( $STATUS, "rsync -rtv --modify-window 1 --delete --safe-links /home/pstack/Documents /home/pstack/Multimedia /home/pstack/Transcoded_Videos /mnt/ 2>&1 |" );
+                    #open( $STATUS, "rsync -rtv --modify-window 1 --delete --safe-links /home/pstack/Documents /mnt/ 2>&1 |" );
+                    #while (<$STATUS>) {
+                    unless ( $backuppid = fork ) {
+
+                        #system("rsync -rtv --modify-window 1 --delete --safe-links /home/pstack/Documents /home/pstack/Multimedia /home/pstack/Transcoded_Videos /mnt/");
+                        my $rc = 0;
+                        system("mysqldump -u root -p$sqlPassword pStack --add-drop-table > /mnt/pStack_backup.sql");
+
+                        #system("rsync -rtvWq --modify-window 1 --delete --safe-links /home /var/www /etc/samba /etc /usr/lib/cups/backend /root /mnt/");
+                        #$rc=(system("rsync -rtvWq --modify-window 1 --delete --safe-links /home/pstack/Documents /home/pstack/Multimedia /home/pstack/Transcoded_Videos /home/pstack/Previews /mnt/") >>8);
+                        #$rc = ( system("rsync -rtvWq --modify-window 1 --delete --safe-links /home/pstack/Documents /home/pstack/Multimedia /home/pstack/Transcoded_Videos /home/pstack/Previews /mnt/ >> /tmp/rsync.log 2>&1") >> 8 );
+                        $rc = ( system("rsync -rtvWq --modify-window 1 --delete --safe-links /home/pstack/Documents /home/pstack/Multimedia /home/pstack/Previews /mnt/ >> /tmp/rsync.log 2>&1") >> 8 );
+
+                        #$rc = ( system("rsync -rtvWq --modify-window 1 --delete --safe-links /home /var/www /etc/samba /etc /usr/lib/cups/backend /root /mnt/ >> /tmp/rsync.log 2>&1") >> 8 );
+
+                        #$rc=(system("rsync -rtvWq --modify-window 1 --delete --safe-links /home /var/www /etc/samba /etc /usr/lib/cups/backend /root /mnt/ >> /tmp/rsync.log 2>&1") >>8);
+                        if ( $rc == 24 ) { $rc = 0; }    #Ignore vanished files
+
+                        #system("rsync -a --delete /home /mnt/");
+                        #system("sync");
+                        if ( !-e "/dev/backup1" ) { ++$rc; }
+                        system("umount /mnt");
+                        if ( !-e "/dev/backup1" ) { ++$rc; }
+
+                        #system("rsync -rtv --modify-window 1 --delete --safe-links /home/pstack/Documents /mnt/");
+                        exit($rc);
+                    }
+                    my $i = 1;
+
+                    while ( $backuppid != 0 ) {
+                        if ( waitpid( $backuppid, WNOHANG ) != 0 ) {
+                            $rc = $? >> 8;
+                            print "RC= $rc\n";
+                            $backuppid = 0;
+                        }
+                        print $T chr(0x02) . "0$ip" . "\n";
+                        print $T chr(0x02) . "1Backup" . substr( $progress_indicator, 1, $i ) . "\n";
+                        if   ( $i < 5 ) { ++$i }
+                        else            { $i = 1 }
+                        sleep 1;
+                        print $T chr(0x02) . "9W\n";
+                    }
+                }
+                if ( $rc != 0 ) {
+                    print $T chr(0x02) . "9b\n";
+                    print $T chr(0x02) . "9a\n";
+                    print $T chr(0x02) . "9u\n";
+                    print $T chr(0x02) . "9t\n";
+                    print $T chr(0x02) . "9E\n";
+                    print $T chr(0x02) . "0Backup Failed!" . "\n";
+                    print $T chr(0x02) . "1Try again $rc" . "\n";
+                    print $T chr(0x02) . "9W\n";
+
+                    while ( !( CheckHandle($T) =~ /(Scan|Backup)/ ) ) {
+                        select( undef, undef, undef, 0.25 );    #Used to sleep
+                    }
+                    print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+                    print $T chr(0x02) . "9e\n";
+                    print $T chr(0x02) . "9a\n";
+                    print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" ) . "\n";
+                }
+            }
+            else {
+                print $T chr(0x02) . "9b\n";
+                print $T chr(0x02) . "9a\n";
+                print $T chr(0x02) . "9u\n";
+                print $T chr(0x02) . "9t\n";
+                print $T chr(0x02) . "9E\n";
+                print $T chr(0x02) . "0Backup Failed!" . "\n";
+                print $T chr(0x02) . "1Invalid Media..." . "\n";
+                print $T chr(0x02) . "9W\n";
+
+                while ( !( CheckHandle($T) =~ /(Scan|Backup)/ ) ) {
+                    select( undef, undef, undef, 0.25 );    #Used to sleep
+                }
+                print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+                print $T chr(0x02) . "9e\n";
+                print $T chr(0x02) . "9a\n";
+                print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" ) . "\n";
+
+            }
+            print $T chr(0x02) . "9b\n";
+            print $T chr(0x02) . "9a\n";
+            print $T chr(0x02) . "9u\n";
+            print $T chr(0x02) . "9t\n";
+            print $T chr(0x02) . "9F\n";
+        }
+        elsif ( $action =~ /LAN/ ) {
+            print $T chr(0x02) . "0Connecting to" . "\n";
+            print $T chr(0x02) . "1LAN Interface..." . "\n";
+            ($wireless) = `ip link show` =~ /\d+: (w\w+):/gs;
+            system("ifdown $wireless");
+            `ip link set $wireless down`;
+            ($ethernet) = `ip link show` =~ /\d+: (e\w+):/gs;
+            system("ifdown $ethernet");
+            system("ifup $ethernet");
+            unlink("/etc/network/interfaces.d/wireless");
+
+            #system("service networking restart");
+
+            print $T chr(0x02) . "9u\n";
+            print $T chr(0x02) . "9a\n";
+        }
+        else {
+            print $T chr(0x02) . "9u\n";
+            print $T chr(0x02) . "9a\n";
+        }
+    }
+}
+
+# If the system is connected via a wireless interface it will still try to bring up the wired ethernet interface during the first few minutes after boot.
+# If this is still ongoimg durin shutdown we will kill the corresponding process to speed things up.
+`ip link show` =~ /\d+: (e\w+):/gs;
+system("kill \$(lsof -t /run/network/ifstate.$1)");
+print $T chr(0x02) . "9A\n";
+print $T chr(0x02) . "9W\n";
+print $T chr(0x02) . "9e\n";
+print $T chr(0x02) . "9p\n";
+print $T chr(0x02) . "9w\n";
+print $T chr(0x02) . "0Bye bye..." . "\n";
+print $T chr(0x02) . "1FriendlyStack" . "\n";
+sleep(3);
+print $T chr(0x02) . "0" . "\n";
+print $T chr(0x02) . "1" . "\n";
+print $T chr(0x02) . "9S\n";
+print $T chr(0x02) . "9U\n";
+sleep(3);
+close($T);
+exit(0);
+
+sub do_ocr {
+    my ( $scannedfile, $mode ) = @_;
+    #$mode="print";
+
+    $timesec = $scannedfile;
+    @mdate   = CORE::localtime( stat("$scandir/$scannedfile.job")->mtime );
+    $ts      = sprintf( "%4d-%02d-%02d %02d-%02d-%02d ", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
+
+    #$destination = $defaultdestination . sprintf( "/%4d/%02d", $mdate[5] + 1900, $mdate[4] + 1 );
+    $destination = $defaultdestination;
+    %goodpages   = ();
+    my $x = 0;
+
+    foreach $page ( glob("\"$scandir/scan-$scannedfile-*.tif\"") ) {
+
+        unless ( $pid = fork ) {
+            if ( $mode eq "scan" ) {
+                $scommand = "/usr/bin/convert $page -scale 9% $page.tiff";
+                system("$scommand");
+                $scommand = "/usr/bin/convert $page.tiff -shave 7%x3% -fuzz $threshhold% -trim +repage -shave 3%x3% -fuzz $threshhold% -trim info:-";
+                `$scommand` =~ /\b(\d+)x(\d+)\b/;
+                ( $w, $h ) = ( $1, $2 );
+            }
+            if ( ( $w == 1 ) && ( $h == 1 ) && $mode eq "scan" ) { unlink( $page, "$page.tiff" ); }
+            else {
+                if ( !( `/usr/bin/zbarimg -q -Sdisable -Sqrcode.enable -Sposition=disable -Semit-check=disable -Sx-density=1 -Sy-density=1 $page.tiff` =~ /QR-Code:pStack:.*/ ) || $mode eq "print" ) {
+                    if ( $mode eq "scan" ) {
+
+                        #if ( !( $scanner =~ /^kds_i11xx:i1150\/i1180.*$|^imagescan.*$|^kds_i3000:i3000.*$/ ) ) {
+                        if ( !( $scanner =~ /^kds_i11xx.*$|^imagescan.*$|^kds_i3000.*$/ ) ) {
+                            $scommand = "/usr/bin/convert $page.tiff -trim info:-";
+                            `$scommand` =~ /\b(\d+)x(\d+)\b/;
+                            if ( ( ( $1 * $2 ) / ( 298 * 421 ) ) < 0.55 ) {
+                                if ( $OCR_ENGINE eq "TESSERACT" ) {
+                                    $scommand = "/usr/bin/convert $page -deskew 50% -trim  +repage $page";
+                                }
+                                elsif ( ( $OCR_ENGINE eq "ABBYYOCR" ) || ( $OCR_ENGINE eq "NSOCR" ) ) {
+                                    $scommand = "/usr/bin/convert $page -trim  +repage $page";
+                                }
+                                system("$scommand");
+                            }
+                        }
+                    }
+                    if ( $OCR_ENGINE eq "TESSERACT" ) {
+                        if ( $mode eq "scan" ) {
+                            system("/home/pstack/bin/preprocess $page");
+                        }
+                        system("$TESSERACT --oem 1 -l deu+fra+eng \"$page\" \"$page\" pdf > /dev/null 2>&1");
+                    }
+                    elsif ( $OCR_ENGINE eq "ABBYYOCR" ) {
+
+                        #$scommand = `/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -rl German English French Italian -if $page -ido -f pdf -pel -pfem DontEmbed -ptem ImageOnText -pfs MaxSpeed -pmm disable -of $page.pdf`;
+                        $scommand = `/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -rl German English French Italian -if \"$page\" -ido -f pdf -ptem ImageOnText -pfs MaxSpeed -pmm disable -of "$page.pdf"`;
+                    }
+                    elsif ( $OCR_ENGINE eq "NSOCR" ) {
+
+                        #system("sudo su -c \"/home/pstack/bin/Bin_64/FriendlyStackOCR $page $page.pdf\" -s /bin/sh root");
+                        system("/home/pstack/bin/FriendlyStackOCR -x \"$page\" \"$page.pdf\"");
+                    }
+                }
+            }
+            exit(0);
+        }
+        push( @preprocesspids, $pid );
+        while ( scalar @preprocesspids >= ( $CPUs ) ) {
+            for ( my $a = 0 ; $a < scalar @preprocesspids ; ++$a ) {
+                if ( waitpid( $preprocesspids[$a], WNOHANG ) != 0 ) {
+                    splice( @preprocesspids, $a, 1 );
+                }
+            }
+            sleep(1);
+        }
+
+    }
+    while ( scalar @preprocesspids > 0 ) {
+        for ( my $a = 0 ; $a < scalar @preprocesspids ; ++$a ) {
+            if ( waitpid( $preprocesspids[$a], WNOHANG ) != 0 ) {
+                splice( @preprocesspids, $a, 1 );
+            }
+        }
+        sleep(1);
+    }
+
+    my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+    if ( $mode eq "scan" ) {
+        $previous_pagenumber = 0;
+        foreach $page ( glob("$scandir/scan-$scannedfile-*.tif") ) {
+            $scommand = "/usr/bin/zbarimg -q -Sdisable -Sqrcode.enable -Sposition=disable -Semit-check=disable -Sx-density=1 -Sy-density=1 $page.tiff";
+
+            $barcode = `$scommand`;
+            $page =~ /scan-\d+-(\d+)\.tif/;
+            $pagenumber = $1;
+
+            if ( $barcode =~ /QR-Code:pStack:(\w{32})\n/ ) {
+                ++$x;
+                $single = 0;
+                $query  = "select * from Destinations where Destination_MD5='$1'";
+                $sth    = $dbh->prepare($query);
+                my $rv = $sth->execute;
+                if ( $results = $sth->fetchrow_hashref() ) {
+
+                    #$destination = $basepath . "/" . encode( 'utf-8', $$results{'Destination'} ) . sprintf( "/%4d/%02d", $mdate[5] + 1900, $mdate[4] + 1 );
+                    $destination = $basepath . "/" . encode( 'utf-8', $$results{'Destination'} );
+                    $single = 0;
+                }
+                else {
+
+                    if ( $1 ne "0" ) {
+                        $destination = $defaultdestination;
+                    }
+                }
+
+                unlink( $page, "$page.tiff" );
+            }
+            elsif ( $barcode =~ /QR-Code:pStack:single/ ) {
+                $single = 1;
+                ++$x;
+
+                #unlink($page);
+            }
+            elsif ( $barcode =~ /QR-Code:pStack:0/ ) {
+                $single = 0;
+                ++$x;
+
+                #unlink($page);
+            }
+            else {
+                if ( $single == 1 ) {
+                    if ( ( $pagenumber % 2 ) || ( $pagenumber - $previous_pagenumber ) > 1 ) { ++$x; }
+                }
+                push( @{ $goodpages{ "$destination/" . $ts . "scan-$timesec-$x" } }, $page );
+            }
+            $previous_pagenumber = $pagenumber;
+            unlink("$page.tiff");
+        }
+
+        $single = 0;
+    }
+    elsif ( $mode eq "print" ) {
+        open(JOB,"<","$scandir/$scannedfile.job");
+        while(<JOB>){$md5=$_}
+        close(JOB);
+        $query = "select * from Destinations where Destination_MD5='$md5'";
+        $sth   = $dbh->prepare($query);
+        my $rv = $sth->execute;
+        if ( $results = $sth->fetchrow_hashref() ) {
+            $destination = $basepath . "/" . encode( 'utf-8', $$results{'Destination'} );
+            $single = 0;
+        }
+        else {
+            if ( $1 ne "0" ) {
+                $destination = $defaultdestination;
+            }
+        }
+	#open(LOG,">","/home/pstack/bin/test.log");
+	#print LOG "jobfile: $scandir/$scannedfile.job\n";
+	#print LOG "md5: $md5\n";
+	#print LOG "destination: $destination\n";
+        my @files = glob("\"$scandir/scan-$scannedfile-*.tif.pdf\"");
+        if ( scalar @files > 1 ) {
+            $scommand = "java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar PDFMerger \"" . join( "\" \"", @files ) . "\" \"$destination/$ts $scannedfile.pdf\"";
+        }
+        else {
+            $scommand = "cp \"$files[0]\" \"$destination/$ts $scannedfile.pdf\"";
+        }
+	#print LOG "scommand $scommand\n";
+        system "$scommand";
+        close(LOG);
+    }
+    if ($sth) { $sth->finish; }
+    $dbh->disconnect();
+
+    #close($STATUS);
+    #if ($success) {
+    if (1) {
+
+        #push( @ocrjobs, {%goodpages} );
+
+        my $i = 0;
+
+        #my ($ocrjob) = @_;
+        my ($ocrjob) = {%goodpages};
+        my @pages = ();
+        foreach $key ( keys( %{$ocrjob} ) ) {
+            $destination = $key;
+            $destination =~ s/\/[^\/]*$//;
+            if ( !( ( -d "$destination" ) && ( -e "$destination" ) ) ) {
+                make_path( $destination, { owner => $FUSER, group => $FGROUP, mode => 0770 } );
+                $destination =~ s/^$basepath\///;
+                my @dirs = split( '/', "$destination" );
+                my $dir = $basepath;
+                while (@dirs) { $dir = $dir . '/' . shift(@dirs); chmod 0770, $dir; }
+
+                #sleep(1);
+            }
+            unless ( $pid = fork ) {
+
+                #if ( $OCR eq "ABBYYOCR" ) {
+                if (0) {
+
+                    #$scommand = "/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -ptem ImageOnText -pwtm Write -rl German English French -pfs MaxSpeed -pel -if " . join( " -if ", @{ ${$ocrjob}{$key} } ) . " -ido -f pdf -of \"" . $key . ".pdf\"";
+
+    #$scommand = "/usr/local/bin/abbyyocr11 -pfp FlushToDisk -mpm Parallel -rpc 2 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -ptem ImageOnText -pwtm Write -rl German English French -pfs MaxSpeed -pel -if " . join( " -if ", @{ $goodpages{$key} } ) . " -ido -f pdf -of \"" . $key . ".pdf\"";
+                    $scommand = "/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -rl German English French -if " . join( " -if ", @{ $goodpages{$key} } ) . " -ido -f pdf -pel -pfem DontEmbed -ptem ImageOnText -pfs MaxSpeed -pmm disable -of \"" . $key . ".pdf\"";
+                    system "$scommand";
+                }
+
+                #elsif ( $OCR eq "TESSERACT" ) {
+                elsif (1) {
+
+                    #$scommand = "/usr/bin/tiffcp -c none \"" . join( "\" \"", @{ ${$ocrjob}{$key} } ) . "\" \"$key.tif\"";
+                    if ( scalar @{ ${$ocrjob}{$key} } > 1 ) {
+
+                        #$scommand = "java -jar /home/pstack/bin/pdfbox-app-2.0.0-RC3.jar PDFMerger \"" . join( "\".pdf \"", @{ ${$ocrjob}{$key} } ) . "\".pdf \"$key.pdf\"";
+                        $scommand = "java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar PDFMerger \"" . join( "\".pdf \"", @{ ${$ocrjob}{$key} } ) . ".pdf\" \"$key.pdf\"";
+                    }
+                    else {
+                        #File::Copy::syscopy( "\"".${ ${$ocrjob}{$key} }[0]."\"", "\"$key.pdf\"" ) or die "Copy failed: $!";
+                        $scommand = "cp \"${ ${$ocrjob}{$key} }[0].pdf\" \"$key.pdf\"";
+                    }
+                    system "$scommand";
+
+                    #$scommand = "$TESSERACT \"$key.tif\" \"$key\" -l deu+fra+eng --user-words /home/pstack/bin/words pdf";
+                    #print "$scommand";
+
+                    #$scommand = "/usr/local/bin/tesseract \"$key.tif\" \"$key\" -l deu --user-words /home/pstack/bin/words pdf";
+                    #system "$scommand";
+                    #unlink( "$key.tif", "$key.txt" );
+                }
+                if ( -e "$key.pdf" ) {
+                    chown( $uid, $gid, "$key.pdf" );
+                    chmod( 0660, "$key.pdf" );
+                    my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+
+                    #pstack::feedstack( $dbh, $key . ".pdf", 0 );
+                    if ($sth) { $sth->finish; }
+                    $dbh->disconnect();
+
+                    #foreach my $file ( @{ ${$ocrjob}{$key} } ) {
+                    #    unlink( $file, "$file.pdf" );
+                    #}
+
+                    #unlink( @{ ${$ocrjob}{$key} } );
+                    exit(0);
+                }
+                else { exit(1); }
+            }
+            push( @ocrpids, $pid );
+            while ( scalar @ocrpids >= $CPUs) {
+                for ( my $a = 0 ; $a < scalar @ocrpids ; ++$a ) {
+                    if ( waitpid( $ocrpids[$a], WNOHANG ) != 0 ) {
+                        splice( @ocrpids, $a, 1 );
+                    }
+                }
+                sleep(1);
+            }
+        }
+        while ( scalar @ocrpids > 0 ) {
+            for ( my $a = 0 ; $a < scalar @ocrpids ; ++$a ) {
+                if ( waitpid( $ocrpids[$a], WNOHANG ) != 0 ) {
+                    splice( @ocrpids, $a, 1 );
+                }
+            }
+            sleep(1);
+        }
+        unlink( "$scandir/$scannedfile.job", glob("\"$scandir/scan-$scannedfile-*.tif\""), glob("\"$scandir/scan-$scannedfile-*.tif.pdf\"") );
+        exit(0);
+    }
+}
+
+sub get_local_ip_address {
+    my ($default_interface) = `route` =~ /^default.*\s(\w+)\n/m;
+    my ($local_ip_address)  = `ip -4 -h -o addr show` =~ /$default_interface.*inet\s(\d+\.\d+\.\d+\.\d+)\//;
+    return $local_ip_address;
+}
+
+sub CheckHandle {
+    my ($timeout)    = 0.05;    # Don't wait.
+    my ($rfd)        = '';      # Initialize with string only
+    my ($filehandle) = @_;
+    vec( $rfd, fileno($filehandle), 1 ) = 1;
+
+    # Wait for something to happen, and make sure
+    # that it happened to the right filehandle.
+    if ( select( $rfd, undef, undef, $timeout ) >= 0
+        && vec( $rfd, fileno($filehandle), 1 ) )
+    {
+
+        # Something came in!
+        my ($buffer);
+
+        #read ($filehandle, $buffer, $block_size);
+        $buffer = <$T>;
+        chomp($buffer);
+
+        return $buffer;
+    }
+
+    return;
+}
+
+sub picsort {
+
+    #my $e=shift;
+    #my $file=$e->fullname;
+    my ( $file, $OCR, $Delete ) = @_;
+    if ( $file eq "" ) { $file = $File::Find::name; }
+
+    my $exifTool = new Image::ExifTool;
+
+    #my $md5         = Digest::MD5->new;
+    #my $directory   = "v:/";
+    my $destination = "/home/pstack/Multimedia";
+    my ( $count, $newname, @mdate, $info, $newfile, $newdir, $md5_source, $md5_destination, $SOURCE, $DESTINATION );
+    my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+    if ( ( -f $file ) && ( $file =~ /\.(jp[e]?g|r[a]?w2|avi|mp4|bmp|png|mts|mov)$/i ) && !( $file =~ /\/\..*$/ ) )
+
+    {
+        $count = 0;
+        $info  = $exifTool->ImageInfo($file);
+        if ( $$info{'CreateDate'} ) {
+            $newname = $$info{'CreateDate'};
+            $newname =~ s/:/-/g;
+        }
+        elsif ( $$info{'DateTimeOriginal'} ) {
+            $newname = $$info{'DateTimeOriginal'};
+            $newname =~ s/:/-/g;
+        }
+
+        else {
+            @mdate = CORE::localtime( stat($file)->mtime );
+            $newname = sprintf( "%4d-%02d-%02d %02d-%02d-%02d", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
+        }
+        $newfile = sprintf( "%s %04d_%s", $newname, $count, basename($file) );
+        $newfile =~ /^(\d{4})-(\d{2}).*/;
+        $newdir = "$1/$2";
+
+        if ( !( -d "$destination/$newdir" ) ) {
+            make_path( "$destination/$newdir", { owner => $uid, group => $gid, mode => 0775 } );
+            $destination =~ s/^$basepath\///;
+            my @dirs = split( '/', "$newdir" );
+            my $dir = $destination;
+            while (@dirs) {
+                $dir = $dir . '/' . shift(@dirs);
+                chmod( 0775, $dir );
+            }
+        }
+
+        #print basename($file), "-------->$newfile\n" ;
+        while ( -e "$destination/$newdir/$newfile" ) {
+            open( $SOURCE, $file );
+            binmode($SOURCE);
+            open( $DESTINATION, "$destination/$newdir/$newfile" );
+            binmode($DESTINATION);
+            $md5_source      = Digest::MD5->new->addfile($SOURCE)->hexdigest;
+            $md5_destination = Digest::MD5->new->addfile($DESTINATION)->hexdigest;
+            close($SOURCE);
+            close($DESTINATION);
+
+            if ( $md5_source ne $md5_destination ) {
+
+                #    while ( -e "$destination/$newdir/$newfile" ) {
+                ++$count;
+                $newfile = sprintf( "%s %04d_%s", $newname, $count, basename($file) );
+            }
+            else { last; }
+        }
+
+        #print "   copying renamed ", $file," ----> $destination/$newdir/$newfile\n";
+        if ( ( $md5_source ne $md5_destination ) || !( -e "$destination/$newdir/$newfile" ) ) {
+            if ( $OCR == 0 ) {
+                File::Copy::syscopy( $file, "$destination/$newdir/$newfile" ) or die "Copy failed: $!";
+                utime( stat($file)->atime, stat($file)->mtime, "$destination/$newdir/$newfile" );
+                chmod( 0664, "$destination/$newdir/$newfile" );
+                chown( $uid, $gid, "$destination/$newdir/$newfile" );
+
+                #pstack::feedstack( $dbh, "$destination/$newdir/$newfile", $OCR );
+            }
+            else {
+                if ( !-d "$defaultdestination" ) {
+                    make_path( "$defaultdestination", { owner => $uid, group => $gid, mode => 0770 } );
+                    chmod( 0770, "$defaultdestination" );
+                }
+                if ( $OCR_ENGINE eq 'NSOCR' ) {
+                    system( "/home/pstack/bin/FriendlyStackOCR -x \"$file\" \"$defaultdestination/" . $newfile . ".pdf\"" );
+                }
+                elsif ( $OCR_ENGINE eq 'TESSERACT' ) {
+                    system("convert \"$file\" -auto-orient \"$file\"");
+                    system("/home/pstack/bin/preprocess $file");
+
+                    #Some extra code here to handle Tesseract 4.0 beta instability
+                    system("/usr/bin/exiftool -Orientation=  \"$file\"");
+                    system( "$TESSERACT --oem 1 -l deu+fra+eng \"$file\" \"$defaultdestination/" . "$newfile\" pdf > /dev/null 2>&1" );
+
+                    #system( "$TESSERACT --psm 1 --oem 1 -l deu+fra+eng \"$file\" \"$defaultdestination/" . "$newfile\" pdf_foto > /dev/null 2>&1" );
+                }
+            }
+            if ( $Delete == 1 ) { unlink($file); }
+        }
+        else {
+            if ( $Delete == 1 ) { unlink($file); }
+        }
+    }
+    $dbh->disconnect();
+    return (0);
+}
+
+sub listfiles {
+    my ( $OCR, $Delete ) = @_;
+    if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(jpg|jpeg|r[a]?w2|avi|mp4|png|bmp|mts|mov)$/i ) && !( $File::Find::name =~ /\/\..*$/ ) ) {
+        if ( !exists( $filequeue{$File::Find::name} ) ) {
+
+            if ( ( !`lsof \"$File::Find::name\"` ) && ( ( -s $File::Find::name ) > 0 ) ) {
+                $filequeue{$File::Find::name} = { OCR => $OCR, Delete => $Delete };
+
+                #printf( "%s\t%d\t%d\n", $File::Find::name, $OCR, $Delete );
+            }
+        }
+    }
+}
+
+sub enumerate_sdcard {
+    my ( $startdir, $OCR, $Delete ) = @_;
+    system("mount -t vfat /dev/usbsd1 /mnt");
+    my ( @pidss, $pid );
+    find(
+        {
+            wanted => sub {
+                unless ( $pid = fork ) {
+                    picsort( "", $OCR, $Delete );
+                    exit(0);
+                }
+                push( @pidss, $pid );
+                while ( scalar @pidss > 3 ) {
+                    for ( my $a = 0 ; $a < scalar @pidss ; ++$a ) {
+                        if ( waitpid( $pidss[$a], WNOHANG ) != 0 ) {
+                            splice( @pidss, $a, 1 );
+                        }
+                    }
+                }
+
+            },
+            no_chdir => 1
+        },
+        $startdir
+    );
+    while ( scalar @pidss > 0 ) {
+        for ( my $a = 0 ; $a < scalar @pidss ; ++$a ) {
+            if ( waitpid( $pidss[$a], WNOHANG ) != 0 ) {
+                splice( @pidss, $a, 1 );
+            }
+        }
+    }
+    system("umount /mnt");
+    return (0);
+}
+
+sub get_pidfile {
+
+    # the filename should be passed in as a parameter
+    my $filename = shift;
+    open FILE, $filename or die "Could not read from $filename, program halting.";
+
+    # read the record, and chomp off the newline
+    chomp( my $record = <FILE> );
+    close FILE;
+    return $record;
+}
+
+sub testBackupMedia {
+    my $serialNumber = "";
+    my $rc           = 1;
+    if ( -e "/dev/backup" ) {
+        if ( -e "/dev/backup" ) {
+
+            #Get device USB serial number
+            ($serialNumber) = `smartctl -i /dev/backup` =~ /Serial Number:\s+(.+)$/im;
+            if ( $? >> 8 ) {
+                ($serialNumber) = `smartctl -i -d scsi /dev/backup` =~ /Serial Number:\s+(.+)$/im;
+                if ( $? >> 8 ) {
+                    ($serialNumber) = `udevadm info --name=/dev/backup` =~ /ID_SERIAL_SHORT=(.+)$/m;
+                }
+            }
+
+            #Check if device is registered in database
+            if ( !( $? >> 8 ) && ( scalar $serialNumber ) ) {
+                my $dbh                = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
+                my $sth                = $dbh->prepare("SET NAMES 'utf8'");
+                my $rv                 = $sth->execute;
+                my $quotedSerialNumber = $dbh->quote($serialNumber);
+                $sth = $dbh->prepare("select * from BackupMedia where `SerialNumber`=$quotedSerialNumber");
+                $rv  = $sth->execute;
+                if ( $sth->rows() == 1 ) {
+
+                    #Check if the backup partition has the correct file system type
+                    ##if ( ${ [ `blkid /dev/backup1` =~ /\/dev\/backup1:\sLABEL="FriendlyStack_BackupMedia"\sUUID="\w+"\sTYPE="(\w+)"/ ] }[0] eq "ntfs" ) {
+                    #if ( ${ [ `blkid /dev/backup1` =~ /\/dev\/backup1:\s.*UUID="\w+"\sTYPE="(\w+)"/ ] }[0] eq "ntfs" ) {
+                    $rc = 0;
+
+                    #}
+                }
+                $sth->finish();
+                $dbh->disconnect();
+            }
+        }
+    }
+    return ($rc);
+}
+

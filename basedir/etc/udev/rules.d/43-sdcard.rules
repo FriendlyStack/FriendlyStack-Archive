@@ -1,0 +1,4 @@
+# Disable Realtek SD Card Reader
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="0129", ATTR{authorized}="0"
+#Create Symbolic Link for SD Cards
+KERNEL=="sd*", ATTRS{model}=="STORAGE DEVICE  ", SYMLINK+="usbsd%n"

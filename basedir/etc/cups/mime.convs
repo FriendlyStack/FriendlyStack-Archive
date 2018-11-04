@@ -1,0 +1,3 @@
+application/postscript          application/vnd.cups-postscript 10      pstops
+application/vnd.cups-postscript application/postscript  10      pstops
+

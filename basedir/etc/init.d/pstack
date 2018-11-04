@@ -1,0 +1,69 @@
+#!/bin/sh
+# Start/stop the cron daemon.
+#
+### BEGIN INIT INFO
+# Provides:          pstack
+# Required-Start:    $remote_fs $syslog $time
+# Required-Stop:     $remote_fs $syslog $time 
+# Should-Start:      $network $named slapd autofs ypbind nscd nslcd winbind mysql FriendlyStackWatcher
+# Should-Stop:       $network $named slapd autofs ypbind nscd nslcd winbind 
+# Default-Start:     5
+# Default-Stop:      0 1 6
+# X-Interactive: true
+# Short-Description: Regular background program processing daemon
+# Description:       cron is a standard UNIX program that runs user-specified 
+#                    programs at periodic scheduled times. vixie cron adds a 
+#                    number of features to the basic UNIX cron, including better
+#                    security and more powerful configuration options.
+### END INIT INFO
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin
+DESC="pstack daemon"
+NAME=pstack
+DAEMON=/home/pstack/bin/pstack
+PIDFILE=/var/run/pstack.pid
+SCRIPTNAME=/etc/init.d/"$NAME"
+LANG=en_US.UTF-8
+LANGUAGE=en_US:en
+READ_ENV="yes"
+
+
+test -f $DAEMON || exit 0
+
+. /lib/lsb/init-functions
+
+
+
+# Parse the system's environment
+if [ "$READ_ENV" = "yes" ] ; then
+    parse_environment
+fi
+
+
+case "$1" in
+start)	log_daemon_msg "Starting Friendly Stack" "pstack"
+        start_daemon -p $PIDFILE $DAEMON $EXTRA_OPTS
+        log_end_msg $?
+	;;
+stop)	log_daemon_msg "Stopping Friendly Stack" "pstack"
+        killproc -p $PIDFILE $DAEMON
+        RETVAL=$?
+        [ $RETVAL -eq 0 ] && [ -e "$PIDFILE" ] && rm -f $PIDFILE
+        log_end_msg $RETVAL
+        ;;
+restart) log_daemon_msg "Restarting Friendly Stack" "pstack" 
+        $0 stop
+        $0 start
+        ;;
+reload|force-reload) log_daemon_msg "Reloading configuration files for Friendly Stack" "pstack"
+	# cron reloads automatically
+        log_end_msg 0
+        ;;
+status)
+        status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+        ;;
+*)	log_action_msg "Usage: /etc/init.d/pstack {start|stop|status|restart|reload|force-reload}"
+        exit 2
+        ;;
+esac
+exit 0
