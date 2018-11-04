@@ -313,6 +313,12 @@ update-rc.d -f cups remove
 ##Create user for usbmux
 useradd -r -G plugdev -d /var/lib/usbmux -s /sbin/nologin usbmux -c "usbmux daemon"
 
+##Program the Arduino Uno compatible FSCU
+if [ -e /dev/ttyACM0 ]
+then
+/usr/bin/avrdude -qq -C/home/pstack/bin/avrdude.conf -v -patmega328p -carduino -P/dev/pcontrol -b115200 -D -Uflash:w:/home/pstack/bin/FSCU.hex:i
+fi
+
 
 sync
 sync
