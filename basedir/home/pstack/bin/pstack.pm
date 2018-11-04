@@ -55,7 +55,7 @@ sub feedstack {
     Lingua::Identify::activate_language('fr');
     %filters = ( "doc", "writer_pdf_Export", "docx", "writer_pdf_Export", "xls", "calc_pdf_Export", "xlsx", "calc_pdf_Export", "ppt", "impress_pdf_Export", "pptx", "impress_pdf_Export", "vsd", "draw_pdf_Export", "vsdx", "draw_pdf_Export", "vdx", "draw_pdf_Export" );
     %Months = ( "Januar", 1, "Februar", 2, "März", 3, "April", 4, "Mai", 5, "Juni", 6, "Juli", 7, "August", 8, "September", 9, "Oktober", 10, "November", 11, "Dezember", 12, "January", 1, "February", 2, "March", 3, "April", 4, "May", 5, "June", 6, "July", 7, "August", 8, "September", 9, "October", 10, "November", 11, "December", 12, "JAN", 1, "FEB", 2, "MAR", 3, "APR", 4, "MAY", 5, "JUN", 6, "JUL", 7, "AUG", 8, "SEP", 9, "OCT", 10, "NOV", 11, "DEC", 12 );
-    %birthdays = ( "'1971-10-28 00:00:00'", 1, "'2006-05-31 00:00:00'", 1, "'2009-01-23 00:00:00'", 1, "'1973-04-11 00:00:00'", 1 );
+    %birthdays = ( );
     my $media;
     use File::Path qw(make_path remove_tree);
 
