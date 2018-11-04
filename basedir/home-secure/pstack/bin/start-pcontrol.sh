@@ -23,7 +23,5 @@ runlevel_variable=$(runlevel | cut -d ' ' -f2)
 if (("$runlevel_variable" == 5)) ; then
 systemctl restart FriendlyStackWatcher.service
 systemctl restart pstack.service
-#/etc/init.d/FriendlyStackWatcher restart
-#/etc/init.d/pstack restart
 fi
 exit 0
