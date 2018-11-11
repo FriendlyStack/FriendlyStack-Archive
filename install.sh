@@ -268,7 +268,7 @@ printf "\nExtracting Printer Drivers\n"
 ##Required for self installing image
 update-rc.d -f FriendlyStackInstaller remove
 
-dpkg -i --force-all $SCRIPTPATH/scanner-drivers/brscan4-0.4.4-3.amd64.deb
+dpkg -i --force-all $SCRIPTPATH/scanner-drivers/brscan4-0.4.6-1.amd64.deb
 
 dpkg --install $SCRIPTPATH/scanner-drivers/imagescan_3.30.0-1epson4ubuntu16.04_amd64.deb $SCRIPTPATH/scanner-drivers/imagescan-plugin-gt-s650_1.0.0-1epson4ubuntu16.04_amd64.deb
 
