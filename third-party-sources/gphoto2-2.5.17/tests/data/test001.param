@@ -1,3 +1,0 @@
-TITLE='Recursive directory file list'
-COMMAND='$PROGRAM --camera="Directory Browse" --port=disk:"$STAGINGDIR" -L 2> "$ERRFILE" > "$OUTFILE"'
-SEDCOMMAND='s@\(in folder .\).*/@\1@'

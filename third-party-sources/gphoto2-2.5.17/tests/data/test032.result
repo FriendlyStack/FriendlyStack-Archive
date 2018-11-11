@@ -1,6 +1,0 @@
-ACTION=init
-ACTION=start
-Saving file as gphotobutton.jpg
-ACTION=download
-ARGUMENT=gphotobutton.jpg
-ACTION=stop

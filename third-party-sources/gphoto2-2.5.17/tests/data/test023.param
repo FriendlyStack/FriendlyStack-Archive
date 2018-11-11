@@ -1,3 +1,0 @@
-TITLE='Cameras list'
-COMMAND='$PROGRAM --list-cameras 2> "$ERRFILE" > "$OUTFILE"'
-SEDCOMMAND='/Directory Browse/!d'

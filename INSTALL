@@ -1,0 +1,45 @@
+Installing FriendlyStack
+
+Please keep in mind, that FriendlyStack is designed as an appliance. While it can work on a compuer used for other tasks, it is highly recommended to use a computer dedicated to FriendlyStack. FriendylStack works on Linux and the installation script is designed specifically for Ubuntu Server 16.04 LTS. Ideally you start with a clean Ubuntu 16.04 Server, install without adding any packages (appart from the default selections). Then install FriendlyStack by followig these instructions:
+
+- Plug the display shield on the Arduino Uno (carefully allign the headers and pins).
+- Use the USB Cable to connect the Arduino Uno to the computer (it will be programmed automatically during the installtion)
+- Download FriendlyStack software to your computer.
+- Change to the FriendlyStack directory
+- Execute install.sh    sudo ./install.sh
+
+The installation will complete with a reboot. After the system starts up again, you need to login and unlock FriendlyStack. The defaults (case sensitive) are:
+
+Username: friendly
+Password: stack
+Encryption Key: FriendlyStack
+
+Use your favorite webbrowser to navigate the the IP adress shown on the Arduino.
+
+It strongly recommended to change the default values at the first login!
+
+Now install the driver for your dcument scanner according to the manufacturer's instructions. If the Arduino keeps displaying the message "No Scanner...!" you need to integrate your scanner as follows:
+
+Assuming that you have only one scanner connected to your computer use:
+
+sudo scanimage -h
+
+To get the options for your scanner.
+
+Use lsusb to the manufacturer and device IDs for your scanner (for example 04f9:60a5 for a brother ADS-2600W)
+
+Now add a section for your scanner to the fille /home/pstack/bin/FriendlyStack.conf. Below you see an example for an Epson DS-860
+
+<04b8:014d>
+ DeviceType Epson DS-860
+ DeviceName imagescan
+ Configuration --scan-area="Auto Detect" --mode="Color" --gamma=1.0 --brightness=30 --contrast=40 --deskew=yes --duplex=yes --crop-adjust=0.05 --transfer-format=JPEG --jpeg-quality=70 --double-feed-detection=Normal
+ Postprocessing 1
+</04b8:014d>
+
+DeviceType Should be the name of your document scanner
+DeviceName Should be the name of the device used by sane. You get this by doing "sudo scanimage -L" (depending on driver you might need to remove quotes and bus/device stuff).
+Configuration contains the command line options you want to use for your scans. Please do not set the resolution here, it is set by FriendlyStack to 300dpi.
+Postprocessing should be 1 if you are using postprocessing features of your scanner or 0 if you are not using them (or your scanner does not offer any).
+
+After restarting FriendlyStack (by disconnectin and reconnecting the Arduino or by doing "sudo systemctl restart pstack.service" or by rebooting) your scanner should be ready to go.

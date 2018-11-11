@@ -1,5 +1,0 @@
-# -*- Makefile -*-
-
-# SUBDIRS = dc120 dc210 dc240 dc3200 ez200
-
-EXTRA_DIST += kodak/CAMERAS

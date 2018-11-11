@@ -1,6 +1,0 @@
-Unordered TODO list:
-
--- lot of internal error handling code is needed and the whole internal
-error reporting scheme has to be reorganized and improved!
-
--- consider the idea of adding lasterror variable to PTPParams

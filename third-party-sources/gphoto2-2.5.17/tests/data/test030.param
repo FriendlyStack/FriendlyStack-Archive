@@ -1,3 +1,0 @@
-TITLE='Invalid port type'
-COMMAND='$PROGRAM --camera="Directory Browse" --port=badport:bad --abilities 2> "$OUTFILE" > /dev/null'
-RESULTCODE=1
