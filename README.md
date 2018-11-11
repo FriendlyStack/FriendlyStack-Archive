@@ -8,7 +8,7 @@ FriendlyStack is a Network Appliance for managing physical and electronic docume
 
 * A computer that will run the FriendlyStack software as an appliance (think of a NAS)
 * A document scanner with automatic sheet feeder
-* An Arduino Uno R3 with a USB cable and a Addafruit TFT Touch Shield (2.8" resistive, PRODUCT ID: 1651)
+* A FriendlyStack Control Unit (FSCU) to control your appliance. The simplest form of a FSCU is an Arduino Uno R3 with a USB cable and a Addafruit TFT Touch Shield (2.8" resistive, Adafruit PRODUCT ID: 1651)
 
 ### Minimal Hardware Requirements for the Computer:
 * CPU: Intel compatible, 64 Bit, Support for SSE instructions, at least two cores (while all of this sounds very technical, most of today's and yesterday's CPUs can check all boxes).
