@@ -68,3 +68,12 @@ uses the [GNU Lesser General Public License v2.1](https://github.com/libimobiled
 
 FriendlyStack uses [ifuse](https://github.com/libimobiledevice/ifuse) which
 uses the [GNU Lesser General Public License v2.1](https://github.com/libimobiledevice/ifuse/blob/master/COPYING)
+
+FriendlyStack uses [gphoto2](http://www.gphoto.org/) which
+uses the [GNU General Public License v2.0](https://github.com/gphoto/gphoto2/blob/master/COPYING)
+
+FriendlyStack uses [libgphoto2](https://github.com/gphoto/libgphoto2) which
+uses the [GNU Lesser General Public License v2.1](https://github.com/gphoto/libgphoto2/blob/master/COPYING)
+
+FriendlyStack uses [QR-code generator](https://prgm.spipu.net/view/27) which
+uses the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl.txt)
