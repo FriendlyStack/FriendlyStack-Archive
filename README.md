@@ -22,3 +22,49 @@ FriendlyStack is a Network Appliance for managing physical and electronic docume
 * Duplex Scanning
 * USB Connection
 * Linux Drivers (support for Ubuntu 16.04)
+
+## License
+
+    The code in this repository is licensed terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version;
+    you may not use this file except in compliance with the License.
+    
+    FriendlyStack, a system for managing physical and electronic documents as well as photos and videos.
+    Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+    
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+    
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+**NOTE**: This software depends on other packages that may be licensed under different open source licenses.
+
+FriendlyStack uses [Leptonica library](http://leptonica.com/) which essentially
+uses a [BSD 2-clause license](http://leptonica.com/about-the-license.html).
+
+FriendlyStack uses [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) which
+uses the [Apache License 2.0](https://github.com/tesseract-ocr/tesseract/blob/master/LICENSE)
+
+FriendlyStack uses [Compact Language Detector 2](https://github.com/CLD2Owners/cld2) which
+uses the [Apache License 2.0](https://github.com/CLD2Owners/cld2/blob/master/LICENSE)
+
+FriendlyStack uses [libimobiledevice](https://www.libimobiledevice.org/) which
+uses the [GNU Lesser General Public License v2.1](https://github.com/libimobiledevice/libimobiledevice/blob/master/COPYING)
+
+FriendlyStack uses [usbmuxd](https://github.com/libimobiledevice/usbmuxd) which
+uses the [GNU General Public License version 3](https://github.com/libimobiledevice/usbmuxd/blob/master/COPYING.GPLv3)
+
+FriendlyStack uses [libusbmuxd](https://github.com/libimobiledevice/libusbmuxd) which
+uses the [GNU Lesser General Public License v2.1](https://github.com/libimobiledevice/libusbmuxd/blob/master/COPYING)
+
+FriendlyStack uses [ifuse](https://github.com/libimobiledevice/ifuse) which
+uses the [GNU Lesser General Public License v2.1](https://github.com/libimobiledevice/ifuse/blob/master/COPYING)
