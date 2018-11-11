@@ -120,9 +120,6 @@ stty -echo
 printf "\nPlease enter MySQL Administrator Password: "
 stty echo
 /usr/bin/mysql --batch -u root -p$SQLPASSWORD < /$SCRIPTPATH/FriendlyStack.sql 2>/dev/null
-#/usr/bin/mysql --batch -u root < /root/FriendlyStack.sql 2>/dev/null
-
-
 
 printf "\nCreating Directory Structure"
 sudo mkdir /home/pstack
@@ -316,7 +313,7 @@ update-rc.d -f cups remove
 #update-rc.d ssh disable
 #chsh -s /usr/sbin/nologin friendly
 
-##Create user for usbmux
+##Create user for usbmuxd
 useradd -r -G plugdev -d /var/lib/usbmux -s /sbin/nologin usbmux -c "usbmux daemon"
 
 sync
