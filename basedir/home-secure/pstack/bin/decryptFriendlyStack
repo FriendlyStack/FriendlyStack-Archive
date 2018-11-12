@@ -48,6 +48,7 @@ system("service nmbd start");
 system("service mysql start");
 system("service FriendlyStackWatcher start");
 system("service pstack start");
+system("systemctl reload apache2.service");
 } else {
 system("service pstack start");
 }
