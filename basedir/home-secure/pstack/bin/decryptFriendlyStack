@@ -17,18 +17,8 @@
 ##You should have received a copy of the GNU Affero General Public License
 ##along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-#Determine avaiable space on volume
-`df -h --output=avail /home/pstack` =~ /(\d+)(\w{1})/;
-$availableSpace=$1;
-$availableSpaceUnit=$2;
-
-
 #Stop services relevant for FrendlyStack
-system("service smbd stop");
-system("service nmbd stop");
-system("service mysql stop");
-
+system("systemctl stop nmbd.service smbd.service mysql.service");
 
 system("echo -n \"$ARGV[0]\" | cryptsetup luksOpen /home/pstack.crypt pstack -");
 
@@ -39,16 +29,12 @@ sleep(1);
 }
 
 if (-d "/home/pstack/Documents") {
-system("service pstack stop");
-system("service FriendlyStackWatcher stop");
+system("systemctl stop pstack.service FriendlyStackWatcher.service");
 
 #Start services relevant for FrendlyStack
-system("service smbd start");
-system("service nmbd start");
-system("service mysql start");
-system("service FriendlyStackWatcher start");
-system("service pstack start");
+system("systemctl start nmbd.service smbd.service mysql.service");
+system("systemctl start pstack.service FriendlyStackWatcher.service");
+
+#This is required on slow systems as Apache might not notice the mount of a different webroot
 system("systemctl reload apache2.service");
-} else {
-system("service pstack start");
 }
