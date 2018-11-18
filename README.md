@@ -25,7 +25,7 @@ FriendlyStack is a Network Appliance for managing physical and electronic docume
 
 ## License
 
-    The code in this repository is licensed terms of the GNU Affero General Public License as
+    The code in this repository is licensed by the terms of the GNU Affero General Public License as
     published by the Free Software Foundation, either version 3 of the
     License, or (at your option) any later version;
     you may not use this file except in compliance with the License.
@@ -77,3 +77,6 @@ uses the [GNU Lesser General Public License v2.1](https://github.com/gphoto/libg
 
 FriendlyStack uses [QR-code generator](https://prgm.spipu.net/view/27) which
 uses the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl.txt)
+
+FriendlyStack uses [Apache PDFBox®](https://pdfbox.apache.org/) which
+uses the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
