@@ -43,30 +43,8 @@ SCRIPTPATH=$( cd $(dirname $0) ; pwd -P )
 fi
 cd "$SCRIPTPATH"
 
-##Required for self installing image
-
-#stty -F /dev/ttyACM0 cs8 19200 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts
-#sleep 1
-##echo -e "\x029F" > /dev/ttyACM0
-#echo "testtest" > /dev/ttyACM0
-#sleep 5
-##echo -e "\x029F" > /dev/ttyACM0
-#echo -e "\x029I" > /dev/ttyACM0
-#echo -e "\x029A" > /dev/ttyACM0
-#echo -e "\x029W" > /dev/ttyACM0
-#echo -e "\x029u" > /dev/ttyACM0
-#echo -e "\x020FriendlyStack" > /dev/ttyACM0
-#echo -e "\x021Installing... " > /dev/ttyACM0
-
-
 if [ -e /dev/ttyUSB0 ]; then ln -s /dev/ttyUSB0 /dev/pcontrol; fi;
 if [ -e /dev/ttyACM0 ]; then ln -s /dev/ttyACM0 /dev/pcontrol; fi;
-
-##Required for self installing image
-
-#LD_LIBRARY_PATH=/cdrom/mystuff
-#export LD_LIBRARY_PATH
-#/cdrom/mystuff/avrdude -qq -C/cdrom/mystuff/avrdude.conf -v -patmega328p -carduino -P/dev/pcontrol -b115200 -D -Uflash:w:/cdrom/mystuff/FSCU.hex:i
 
 sleep 5
 stty -F /dev/pcontrol cs8 19200 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts -hupcl
@@ -332,7 +310,7 @@ chmod -R 2640 /home/pstack/www
 chmod -R ug+X /home/pstack/www
 
 
-##Disable automatic startup of Samba and CUPS to avoid files being placed (by printing) in dummy area before system unlock
+##Disable automatic startup of Samba and CUPS to avoid files being placed (by printing) in home-secure area before system unlock
 update-rc.d -f smbd disable
 update-rc.d -f nmbd disable
 update-rc.d -f cups disable
