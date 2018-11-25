@@ -1,4 +1,22 @@
 #!/bin/bash
+# Start/stop the installer daemon.
+#
+### BEGIN INIT INFO
+# Provides:          installer
+# Required-Start:    $remote_fs $syslog $time
+# Required-Stop:     $remote_fs $syslog $time
+# Should-Start:      $network $named slapd autofs ypbind nscd nslcd winbind mysql
+# Should-Stop:       $network $named slapd autofs ypbind nscd nslcd winbind
+# Default-Start:     2 3 4 5
+# Default-Stop:      0
+# X-Interactive: true
+# Short-Description: Regular background program processing daemon
+# Description:       cron is a standard UNIX program that runs user-specified
+#                    programs at periodic scheduled times. vixie cron adds a
+#                    number of features to the basic UNIX cron, including better
+#                    security and more powerful configuration options.
+### END INIT INFO
+
 
 ##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
 ##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
@@ -16,7 +34,13 @@
 ##You should have received a copy of the GNU Affero General Public License
 ##along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#if id -u friendly > /dev/null 2>&1
+if [ -f /home/FriendlyStack.autoinstall ]
+then
+SCRIPTPATH=/home/FriendlyStack
+else
 SCRIPTPATH=$( cd $(dirname $0) ; pwd -P )
+fi
 cd "$SCRIPTPATH"
 
 ##Required for self installing image
@@ -72,24 +96,26 @@ fi
 
 
 printf "\nUpdating System"
+
+printf "\nInstalling Base Packages"
+#SQLPASSWORD=$(< /dev/urandom /usr/bin/tr -dc _A-Z-a-z-0-9 | /usr/bin/head -c${1-32};echo;)
+SQLPASSWORD=$(openssl rand -base64 32)
+
+if [ -f /home/FriendlyStack.autoinstall ]
+then
+mysqladmin -u root -pdb4dm1n password $SQLPASSWORD
+else
+echo 'mysql-server-5.7 mysql-server/root_password password' $SQLPASSWORD | debconf-set-selections
+echo 'mysql-server-5.7 mysql-server/root_password_again password' $SQLPASSWORD | debconf-set-selections
 cp -r /$SCRIPTPATH/packages /tmp/packages
 echo "deb file:/tmp/packages ./" > /etc/apt/sources.list.d/friendlystack.list
 apt-get -y update
-
-printf "\nInstalling Base Packages"
-SQLPASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1-32};echo;)
-echo 'mysql-server-5.7 mysql-server/root_password password' $SQLPASSWORD | debconf-set-selections
-echo 'mysql-server-5.7 mysql-server/root_password_again password' $SQLPASSWORD | debconf-set-selections
 tasksel install lamp-server samba-server standard openssh-server
-
-##This is provided for compatibilizy with the image installation and will fail in the installscript
-mysqladmin -u root -pdb4dm1n password $SQLPASSWORD
-
-
 apt-get -y --allow-unauthenticated install cups wpasupplicant sane-utils php-fpdf php-xml libimage-exiftool-perl liblingua-identify-perl libclass-dbi-perl libproc-daemon-perl zbar-tools libtiff-tools imagemagick graphicsmagick libav-tools libreoffice ntfs-3g libgphoto2 gphoto2 libdbd-mysql-perl libpdf-api2-perl wireless-tools tesseract leptonica libopenjp2-7 libimobiledevice ifuse libusbmuxd usbmuxd libplist3 jmtpfs convmv liblinux-inotify2-perl apt-offline ifuse cryptsetup libatkmm-1.6 libboost-program-options1.58 libglibmm-2.4 libgraphicsmagick++-q16 libgtkmm-2.4 libpangomm-1.4 libsigc++ libgraphicsmagick++-q16-12 libexpect-perl libio-pty-perl libio-stty-perl libconfig-general-perl smartmontools cryptsetup-bin libcld2-0 avrdude
-
 rm /etc/apt/sources.list.d/friendlystack.list
 rm -rf /tmp/packages
+fi
+
 
 printf "Please enter the Username for the FriendlyStack User: "
 USERNAME=friendly
@@ -164,10 +190,13 @@ chown -R root:www-data /home/pstack/www
 chmod -R 0640 /home/pstack/www
 chmod -R ug+X /home/pstack/www
 
+if [ ! -e /etc/init.d/FriendlyStackInstaller ]
+then
 ##Program the Arduino Uno compatible FSCU
-if [[ $(ls -ls /dev/pcontrol) =~ ttyACM ]]
+if lsusb | grep 2341:0043 > /dev/null 2>&1
 then
 /usr/bin/avrdude -qq -C/home/pstack/bin/avrdude.conf -v -patmega328p -carduino -P/dev/pcontrol -b115200 -D -Uflash:w:/home/pstack/bin/FSCU.hex:i
+fi
 fi
 
 echo $SQLPASSWORD > /home/pstack/bin/mysql.pwd
@@ -304,9 +333,15 @@ chmod -R ug+X /home/pstack/www
 
 
 ##Disable automatic startup of Samba and CUPS to avoid files being placed (by printing) in dummy area before system unlock
-update-rc.d -f smbd remove
-update-rc.d -f nmbd remove
-update-rc.d -f cups remove
+update-rc.d -f smbd disable
+update-rc.d -f nmbd disable
+update-rc.d -f cups disable
+
+
+
+
+update-rc.d -f FriendlyStackInstaller disable
+
 
 
 ##For added security uncomment these
