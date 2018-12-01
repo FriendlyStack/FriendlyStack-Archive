@@ -568,6 +568,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
         if ( ( !( length($scanner) == 0 ) && ( -e "/dev/bus/usb/$bus/$dev" ) ) && ( $action =~ /Scan/ ) ) {
             print $T chr(0x02) . "9u\n";
             print $T chr(0x02) . "9A\n";
+	    print $T chr(0x02) . "9B\n";
             print $T chr(0x02) . "0$ip" . "\n";
             print $T chr(0x02) . "1Scanning..." . "\n";
             $timesec       = time();
@@ -594,7 +595,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 if ( $_ =~ /Scanned\spage\s(\d+)\.\s\(scanner\sstatus\s\=\s(\d)\)/ ) {
                     $pagecount     = $1;
                     $scannerstatus = $2;
-                    print $T chr(0x02) . "1Page $pagecount" . "\n";
+		    print $T chr(0x02) . "1Scanning..." . "\n";
                     print $T chr(0x02) . sprintf( "2%03d\n", $pagecount );
                 }
                 elsif ( ( $_ =~ /(Document feeder out of documents|sane_start: Operation was cancelled)/ ) && ( $pagecount > 0 ) ) { $success = 1; }
