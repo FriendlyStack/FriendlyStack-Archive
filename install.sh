@@ -145,12 +145,14 @@ chown -R root:FriendlyStack /home/pstack/Multimedia
 chown -R root:root /home/pstack/CA
 chown -R root:FriendlyStack /home/pstack/Inbox/Pictures
 chown -R root:FriendlyStack /home/pstack/Inbox/PicturesOCR
+chown -R root:FriendlyStack /home/pstack/Inbox/Scan
 chmod -R 0770 /home/pstack/Documents
 chmod -R 0770 /home/pstack/Previews
 chmod -R 0770 /home/pstack/Multimedia
 chmod -R 0700 /home/pstack/CA
 chmod -R 0770 /home/pstack/Inbox/Pictures
 chmod -R 0770 /home/pstack/Inbox/PicturesOCR
+chmod -R 0770 /home/pstack/Inbox/Scan
 
 printf "\nInstalling FriendlyStack Software"
 
