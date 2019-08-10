@@ -36,6 +36,7 @@ my %basepath = (
     Picture  => "/home/pstack/Multimedia",
     Video    => "/home/pstack/Multimedia",
 );
+my $scandir = "/home/pstack/ScanInbox";
 
 open(PWHANDLE,"<","/home/pstack/bin/mysql.pwd");
 my $sqlPassword = <PWHANDLE>;
@@ -70,7 +71,7 @@ my $continue = 1;
 
 $SIG{TERM} = sub { $continue = 0 };
 
-my @directories = ( "/home/pstack/Documents", "/home/pstack/Multimedia" );
+my @directories = ( "/home/pstack/Documents", "/home/pstack/Multimedia", "/home/pstack/Inbox/Scan" );
 my $doIndexing = true;
 
 system("renice -n -20 -p $$");
@@ -260,6 +261,21 @@ sub do_it {
         unless ( $pid = fork ) {
 
             #system("renice -n 5 -p $$");
+
+            if ( $e->fullname =~ /^\/home\/pstack\/Inbox\/Scan/ ) {
+                my $name = $e->fullname;
+                open TAIL, "tail -c 1024 \"$name\"|" or die "can't do tail -1 $name:$!\n";
+                while (<TAIL>) { $line .= $_; }
+                close TAIL;
+                if ( $line =~ /%%EOF/s && $name =~ /.*\.pdf$/ ) {
+                    my $timesec = time();
+                    `gs -dNOPAUSE -dQUIET -dBATCH -sDEVICE=tiff24nc -r300 -sOutputFile="$scandir/scan-$timesec-%03d.tif" "$name"`;
+                    open( $FW, ">", "$scandir/$timesec.job" );
+                    close($FW);
+                    unlink($name);
+                }
+                exit(0);
+            }
 
             if ( ( -f $e->fullname ) && ( $e->fullname =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $e->fullname =~ /\/\..*$|\~.*$/ ) ) {
                 $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
