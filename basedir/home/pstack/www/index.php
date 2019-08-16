@@ -70,6 +70,15 @@ if ($request['action'] == 'find')
 {
 	find_stuff($con,$request['query']);
 }
+elseif ($request['action'] == 'Scan')
+{
+        system("echo -n \"Scan\" > /tmp/FriendlyStack.action");
+	searchform($request['query']);
+}
+elseif ($request['action'] == 'checkScanner')
+{
+        if(file_exists("/tmp/FriendlyStack.scanner")) echo "1"; else echo "0";
+}
 elseif ($request['action'] == 'delete')
 {
 	//UPDATE `pStack`.`Documents` SET `path`='/home/picture_flat/flat2/2015/02/###Deleted###2015-02-12 10-14-49 0000_P1040585.JPG' WHERE `ID`='250388';
@@ -337,13 +346,31 @@ div.container {
   transition: top 1s;
 }
 div.menu {
-  padding: 15px 0px;
+  padding: 14px 0px;
 }
 </style>
 
+<script src=\"jquery.min.js\"></script>
+<script>
+$(document).ready(function() {
+$.ajaxSetup({cache: false}); // fixes older IE caching bug
+setInterval(function(){
+    $(\"#status\").attr(\"src\", \"status.php?\"+new Date().getTime());
+$.ajax({
+  url:\"index.php?action=checkScanner\",
+  type: 'GET',
+  dataType: 'text',
+  success : function(data){
+    if (data == 1 ) $('#checkScanner').html('<center><a href=\"/?action=Scan\"><i class=\"material-icons md-36 md-dark-green\">input</i></a></center>'); else $('#checkScanner').html(\"\");
+  }
+});
+},2000); //reload every 2000ms
+});
+</script>
+
 </head>
 <header id=\"header\" class=\"header header--fixed hide-from-print\" role=\"banner\">
-<iframe id=\"status\" marginwidth=\"0\" maginheight=\"0\" width=\"20\" height=\"70\" scrolling=\"no\" frameborder=0 src=\"status.php\" align=\"left\">$error_message</iframe><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
+<iframe id=\"status\" name=\"status\" marginwidth=\"0\" marginheight=\"0\" width=\"20\" height=\"70\" scrolling=\"no\" frameborder=0 src=\"status.php\" align=\"left\">$error_message</iframe><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
 <input name=\"action\" type=\"hidden\" value=\"find\">
 </form></div>
 </header>
@@ -390,10 +417,12 @@ window.addEventListener(\"scroll\", function(){
    }
    lastScrollTop = st;
 }, false);
+
 </script>
 <body bgcolor=\"$bg_color\">
-<br><br><br><br>";
-
+<br><br><br><br>
+<div id=\"checkScanner\"></div>";
+        //echo '<center><a href="/?action=Scan"><i class="material-icons md-36 md-dark-green">input</i></a></center><br>';
 
 }
 

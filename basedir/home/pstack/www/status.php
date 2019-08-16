@@ -21,7 +21,7 @@
 
 exec("sudo /usr/bin/pgrep -F /var/run/pstack.pid",$schrott,$process_status_pstack);
 exec("sudo /usr/bin/pgrep -F /var/run/FriendlyStackWatcher.pid",$schrott,$process_status_FriendlyStackFatcher);
-if ($process_status_pstack || $process_status_FriendlyStackFatcher) {$bg_color='#ff0000'; $error_message="<pre>FriendlyStack service is down, unplug and replug the control unit</pre>";} else {$bg_color='#10322d'; $error_message="";}
+if ($process_status_pstack || $process_status_FriendlyStackFatcher) {$bg_color='#ff0000'; $error_message="FriendlyStack service is down, unplug and replug the control unit!";} else {$bg_color='#10322d'; $error_message="";}
 exec("lpstat -W not-completed all", $jobs);
 if(!empty($jobs)) {
 
@@ -30,9 +30,27 @@ if(!empty($jobs)) {
         echo "
                 <html>
                 <head>
+                <link rel=\"stylesheet\" type=\"text/css\" href=\"iconfont/material-icons.css\">
                 <title>status</title>
-                <meta http-equiv=\"refresh\" content=\"5\">
+<style>
+.container { 
+  height: 70px;
+  position: relative;
+}
+
+.center {
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+</style>
 </head>";
 //echo "<body bgcolor=\"$bg_color\" style=\"background-image:url(magic.gif)\"></body>";
-echo "<body bgcolor=\"$bg_color\"></body>";
+echo "<body bgcolor=\"$bg_color\">";
+//if ($process_status_pstack || $process_status_FriendlyStackFatcher) echo "<div class=\"container\"><div class=\"center\"><a href=\"/status.php?tab=1\" onclick=\"return confirm('$error_message');\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">error</i></a></div></div>";
+if ($process_status_pstack || $process_status_FriendlyStackFatcher) echo "<div class=\"container\"><div class=\"center\"><a href=\"/status.php?tab=1\" onclick=\"return confirm('$error_message');\"><img src=\"magic.png\" height=\"70\" width=\"20\"></a></div></div>";
+echo "</body>";
 ?>

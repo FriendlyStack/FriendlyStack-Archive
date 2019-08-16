@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 
-
 ##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
 ##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
 ##
@@ -16,7 +15,6 @@
 ##
 ##You should have received a copy of the GNU Affero General Public License
 ##along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 
 BEGIN { unshift( @INC, "/home/pstack/bin" ); }
 use pstack;
@@ -95,7 +93,7 @@ my $tempdir = "/home/pstack/tmp";
 my $scandir       = "/home/pstack/ScanInbox";
 my %scannerConfig = ParseConfig("FriendlyStack.conf");
 
-open(PWHANDLE,"<","/home/pstack/bin/mysql.pwd");
+open( PWHANDLE, "<", "/home/pstack/bin/mysql.pwd" );
 my $sqlPassword = <PWHANDLE>;
 chomp($sqlPassword);
 close(PWHANDLE);
@@ -186,6 +184,12 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
 
             close($usbDevices);
 
+        }
+        if ( length($scanner) == 0 ) {
+            if ( -e "/tmp/FriendlyStack.scanner" ) { unlink("/tmp/FriendlyStack.scanner"); }
+        }
+        else {
+            if ( !( -e "/tmp/FriendlyStack.scanner" ) ) { `touch /tmp/FriendlyStack.scanner`; }
         }
     }
     if ( -e "/tmp/restore" ) {
@@ -418,17 +422,19 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
     #system("ls /dev/libmtp*");
     #if ( ($? >> 8 == 0) || ( -e "/dev/camera" ) ) {
     if ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /dev/apple*" ] } ) {
-    #if ( 0 + @{ [ glob "/dev/libmtp* /tmp/camera.FriendlyStack* /tmp/apple.FriendlyStack*" ] } ) {
+
+        #if ( 0 + @{ [ glob "/dev/libmtp* /tmp/camera.FriendlyStack* /tmp/apple.FriendlyStack*" ] } ) {
         my $rc = 0;
         if ( $camera_detected == 0 ) {
             $camera_detected = 1;
             print $T chr(0x02) . "9A\n";
             print $T chr(0x02) . "9W\n";
             print $T chr(0x02) . "9B\n";
-	    sleep(10);
+            sleep(10);
+
             #if ( -e "/tmp/camera.FriendlyStack" ) {
             if ( -e "/dev/camera" ) {
-		    sleep(7);
+                sleep(7);
                 open( $STATUS, "cd /home/pstack/Inbox/Pictures && gphoto2 --get-all-files --force-overwrite --hook-script=/home/pstack/bin/hookup.sh 2>&1 |" );
                 my $picture_count = 0;
                 while (<$STATUS>) {
@@ -443,8 +449,10 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 #Some managed Apple devices behave unreliably, therefore it is required to unpair and pair them again
                 system("ifuse /mnt");
                 if ($?) {
+
                     #system("idevicepair unpair");
                     sleep(12);
+
                     #system("idevicepair pair");
                     system("ifuse /mnt");
                 }
@@ -453,7 +461,8 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 #open( $STATUS, "find /mnt -type f -size +500k -iname \"*.jpg\" -ipath \"*DCIM*\" -exec cp -nv {} /home/pstack/Inbox/Pictures/ \\; |" );
                 open( $STATUS, "find /mnt -type f -size +100k -ipath \"*DCIM*\" -exec cp -npv {} /home/pstack/Inbox/Pictures/ \\; 2>&1 |" );
                 my $picture_count = 0;
-		#while ( <$STATUS> && ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /tmp/apple.FriendlyStack*" ] } ) ) {
+
+                #while ( <$STATUS> && ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /tmp/apple.FriendlyStack*" ] } ) ) {
                 while ( <$STATUS> && ( 0 + @{ [ glob "/dev/libmtp* /dev/camera* /dev/apple*" ] } ) ) {
                     ++$picture_count;
                     print $T chr(0x02) . sprintf( "2%03d\n", $picture_count );
@@ -512,14 +521,14 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
 
     #print scalar @ocrjobs . "\n"; # For debuging, print the number of queued OCR jobs. Please note, one OCR job may consist of a number of subjobs.
     my @scannedfiles = glob("\"$scandir/*.job\"");
-    if ( scalar ( @scannedfiles[0] ) && ( $ocrpid == 0 ) ) {
+    if ( scalar( @scannedfiles[0] ) && ( $ocrpid == 0 ) ) {
 
         #if ( @scannedfiles[0] =~ /$scandir\/(\d+)\.job/ ) {
         if ( $scannedfiles[0] =~ /$scandir\/(.+)\.job/ ) {
             $ocrjob = $1;
             my $mode = "";
-            if   ( -s $scannedfiles[0] > 0) { $mode = "print" }
-            else                           { $mode = "scan" }
+            if   ( -s $scannedfiles[0] > 0 ) { $mode = "print" }
+            else                             { $mode = "scan" }
 
             #print "$ocrjob\n";
             unless ( $ocrpid = fork ) {
@@ -564,11 +573,11 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
             }
         }
     }
-    if ( $action = CheckHandle($T) ) {
+    if ( ( $action = CheckHandle($T) ) || ( $action = CheckAction() ) ) {
         if ( ( !( length($scanner) == 0 ) && ( -e "/dev/bus/usb/$bus/$dev" ) ) && ( $action =~ /Scan/ ) ) {
             print $T chr(0x02) . "9u\n";
             print $T chr(0x02) . "9A\n";
-	    print $T chr(0x02) . "9B\n";
+            print $T chr(0x02) . "9B\n";
             print $T chr(0x02) . "0$ip" . "\n";
             print $T chr(0x02) . "1Scanning..." . "\n";
             $timesec       = time();
@@ -595,7 +604,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 if ( $_ =~ /Scanned\spage\s(\d+)\.\s\(scanner\sstatus\s\=\s(\d)\)/ ) {
                     $pagecount     = $1;
                     $scannerstatus = $2;
-		    print $T chr(0x02) . "1Scanning..." . "\n";
+                    print $T chr(0x02) . "1Scanning..." . "\n";
                     print $T chr(0x02) . sprintf( "2%03d\n", $pagecount );
                 }
                 elsif ( ( $_ =~ /(Document feeder out of documents|sane_start: Operation was cancelled)/ ) && ( $pagecount > 0 ) ) { $success = 1; }
@@ -644,7 +653,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 print $T chr(0x02) . "9E\n";
                 print $T chr(0x02) . "9a\n";
                 print $T chr(0x02) . "1Error: jammed!" . "\n";
-                while ( !( CheckHandle($T) =~ /Scan/ ) ) {
+                while ( !( ( CheckHandle($T) =~ /Scan/ ) || ( CheckAction() =~ /Scan/ ) ) ) {
                     select( undef, undef, undef, 0.25 );    #Used to sleep
                 }
                 print $T chr(0x02) . "9e\n";
@@ -813,6 +822,7 @@ exit(0);
 
 sub do_ocr {
     my ( $scannedfile, $mode ) = @_;
+
     #$mode="print";
 
     $timesec = $scannedfile;
@@ -875,7 +885,7 @@ sub do_ocr {
             exit(0);
         }
         push( @preprocesspids, $pid );
-        while ( scalar @preprocesspids >= ( $CPUs ) ) {
+        while ( scalar @preprocesspids >= ($CPUs) ) {
             for ( my $a = 0 ; $a < scalar @preprocesspids ; ++$a ) {
                 if ( waitpid( $preprocesspids[$a], WNOHANG ) != 0 ) {
                     splice( @preprocesspids, $a, 1 );
@@ -950,8 +960,8 @@ sub do_ocr {
         $single = 0;
     }
     elsif ( $mode eq "print" ) {
-        open(JOB,"<","$scandir/$scannedfile.job");
-        while(<JOB>){$md5=$_}
+        open( JOB, "<", "$scandir/$scannedfile.job" );
+        while (<JOB>) { $md5 = $_ }
         close(JOB);
         $query = "select * from Destinations where Destination_MD5='$md5'";
         $sth   = $dbh->prepare($query);
@@ -965,10 +975,11 @@ sub do_ocr {
                 $destination = $defaultdestination;
             }
         }
-	#open(LOG,">","/home/pstack/bin/test.log");
-	#print LOG "jobfile: $scandir/$scannedfile.job\n";
-	#print LOG "md5: $md5\n";
-	#print LOG "destination: $destination\n";
+
+        #open(LOG,">","/home/pstack/bin/test.log");
+        #print LOG "jobfile: $scandir/$scannedfile.job\n";
+        #print LOG "md5: $md5\n";
+        #print LOG "destination: $destination\n";
         my @files = glob("\"$scandir/scan-$scannedfile-*.tif.pdf\"");
         if ( scalar @files > 1 ) {
             $scommand = "java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar PDFMerger \"" . join( "\" \"", @files ) . "\" \"$destination/$ts $scannedfile.pdf\"";
@@ -976,7 +987,8 @@ sub do_ocr {
         else {
             $scommand = "cp \"$files[0]\" \"$destination/$ts $scannedfile.pdf\"";
         }
-	#print LOG "scommand $scommand\n";
+
+        #print LOG "scommand $scommand\n";
         system "$scommand";
         close(LOG);
     }
@@ -1013,7 +1025,7 @@ sub do_ocr {
 
                     #$scommand = "/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -ptem ImageOnText -pwtm Write -rl German English French -pfs MaxSpeed -pel -if " . join( " -if ", @{ ${$ocrjob}{$key} } ) . " -ido -f pdf -of \"" . $key . ".pdf\"";
 
-    #$scommand = "/usr/local/bin/abbyyocr11 -pfp FlushToDisk -mpm Parallel -rpc 2 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -ptem ImageOnText -pwtm Write -rl German English French -pfs MaxSpeed -pel -if " . join( " -if ", @{ $goodpages{$key} } ) . " -ido -f pdf -of \"" . $key . ".pdf\"";
+                    #$scommand = "/usr/local/bin/abbyyocr11 -pfp FlushToDisk -mpm Parallel -rpc 2 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -ptem ImageOnText -pwtm Write -rl German English French -pfs MaxSpeed -pel -if " . join( " -if ", @{ $goodpages{$key} } ) . " -ido -f pdf -of \"" . $key . ".pdf\"";
                     $scommand = "/usr/local/bin/abbyyocr11 -pfem DontEmbed -rtt Normal Matrix Typewriter Receipt -rl German English French -if " . join( " -if ", @{ $goodpages{$key} } ) . " -ido -f pdf -pel -pfem DontEmbed -ptem ImageOnText -pfs MaxSpeed -pmm disable -of \"" . $key . ".pdf\"";
                     system "$scommand";
                 }
@@ -1059,7 +1071,7 @@ sub do_ocr {
                 else { exit(1); }
             }
             push( @ocrpids, $pid );
-            while ( scalar @ocrpids >= $CPUs) {
+            while ( scalar @ocrpids >= $CPUs ) {
                 for ( my $a = 0 ; $a < scalar @ocrpids ; ++$a ) {
                     if ( waitpid( $ocrpids[$a], WNOHANG ) != 0 ) {
                         splice( @ocrpids, $a, 1 );
@@ -1320,3 +1332,10 @@ sub testBackupMedia {
     return ($rc);
 }
 
+sub CheckAction() {
+    open( ACTION, "/tmp/FriendlyStack.action" );
+    my $action = <ACTION>;
+    close(ACTION);
+    unlink("/tmp/FriendlyStack.action");
+    return ($action);
+}
