@@ -73,11 +73,12 @@ if ($request['action'] == 'find')
 elseif ($request['action'] == 'Scan')
 {
         system("echo -n \"Scan\" > /tmp/FriendlyStack.action");
-	searchform($request['query']);
+        header('Location: scannerStatus.html');
+	//searchform($request['query']);
 }
 elseif ($request['action'] == 'checkScanner')
 {
-        if(file_exists("/tmp/FriendlyStack.scanner")) echo "1"; else echo "0";
+        if(file_exists("/tmp/FriendlyStack.scanner") && !(file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action"))) echo "1"; else echo "0";
 }
 elseif ($request['action'] == 'delete')
 {
@@ -356,14 +357,6 @@ $(document).ready(function() {
 $.ajaxSetup({cache: false}); // fixes older IE caching bug
 setInterval(function(){
     $(\"#status\").attr(\"src\", \"status.php?\"+new Date().getTime());
-$.ajax({
-  url:\"index.php?action=checkScanner\",
-  type: 'GET',
-  dataType: 'text',
-  success : function(data){
-    if (data == 1 ) $('#checkScanner').html('<center><a href=\"/?action=Scan\"><i class=\"material-icons md-36 md-dark-green\">input</i></a></center>'); else $('#checkScanner').html(\"\");
-  }
-});
 },2000); //reload every 2000ms
 });
 </script>
@@ -421,8 +414,7 @@ window.addEventListener(\"scroll\", function(){
 </script>
 <body bgcolor=\"$bg_color\">
 <br><br><br><br>
-<div id=\"checkScanner\"></div>";
-        //echo '<center><a href="/?action=Scan"><i class="material-icons md-36 md-dark-green">input</i></a></center><br>';
+<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\"></iframe>";
 
 }
 

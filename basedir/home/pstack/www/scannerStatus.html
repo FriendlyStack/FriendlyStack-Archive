@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="responsiveform.css">
+<link rel="stylesheet" type="text/css" href="main.css">
+<link rel="stylesheet" type="text/css" href="iconfont/material-icons.css">
+<link rel="stylesheet" media="screen and (min-width: 601px)" href="responsiveform1.css" />
+<link rel="stylesheet" media="screen and (max-width: 600px) and (min-width: 351px) and handheld" href="responsiveform2.css" />
+<link rel="stylesheet" media="screen and (max-width: 350px) and handheld" href="responsiveform3.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<script src="jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+$.ajaxSetup({cache: false}); // fixes older IE caching bug
+
+setInterval(function(){
+$.ajax({
+  url:"index.php?action=checkScanner",
+  type: 'GET',
+  dataType: 'text',
+  success : function(data){
+     if (data == 1 ) $('#checkScanner').html('<center><a href="/?action=Scan"><i class="material-icons md-36 md-dark-green">input</i></a></center>'); else $('#checkScanner').html("");
+  }
+});
+},500); //reload every 500ms
+});
+</script>
+
+</head>
+<body>
+
+<div id="checkScanner"></div>
+
+</body>
+</html>
+

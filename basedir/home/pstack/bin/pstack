@@ -593,6 +593,8 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
             #my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
 
             if ( $scannerConfig{"$vendor:$product"} ) {
+                open( STATUS_FILE, ">", "/tmp/FriendlyStack.scanning" );
+                close(STATUS_FILE);
                 open( $STATUS, "/usr/bin/scanimage --device-name=\"" . $scannerConfig{"$vendor:$product"}{'DeviceName'} . "\" --format=tiff --batch=$scandir/scan-$timesec-%03d.tif --resolution $resolution " . $scannerConfig{"$vendor:$product"}{'Configuration'} . " 2>&1 |" );
             }
 
@@ -627,6 +629,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
 
             }
             close($STATUS);
+            unlink("/tmp/FriendlyStack.scanning");
             print $T chr(0x02) . "9b\n";
             if (0) {
 

@@ -21,13 +21,12 @@
 
 exec("sudo /usr/bin/pgrep -F /var/run/pstack.pid",$schrott,$process_status_pstack);
 exec("sudo /usr/bin/pgrep -F /var/run/FriendlyStackWatcher.pid",$schrott,$process_status_FriendlyStackFatcher);
-if ($process_status_pstack || $process_status_FriendlyStackFatcher) {$bg_color='#ff0000'; $error_message="FriendlyStack service is down, unplug and replug the control unit!";} else {$bg_color='#10322d'; $error_message="";}
 exec("lpstat -W not-completed all", $jobs);
-if(!empty($jobs)) {
-
-    $bg_color='#ffff00';
-}
-        echo "
+if ($process_status_pstack || $process_status_FriendlyStackFatcher) {$bg_color='#ff0000'; $error_message="FriendlyStack service is down, unplug and replug the control unit!";}
+elseif (file_exists("/tmp/FriendlyStack.scanning")) {$bg_color='#ffff00'; $error_message="FriendlyStack is scanning...";}
+elseif (!empty($jobs)) {$bg_color='#ffff00'; $error_message="FriendlyStack is processing print queue...";}
+else {$bg_color='#10322d'; $error_message="";}
+echo "
                 <html>
                 <head>
                 <link rel=\"stylesheet\" type=\"text/css\" href=\"iconfont/material-icons.css\">
@@ -51,6 +50,7 @@ if(!empty($jobs)) {
 //echo "<body bgcolor=\"$bg_color\" style=\"background-image:url(magic.gif)\"></body>";
 echo "<body bgcolor=\"$bg_color\">";
 //if ($process_status_pstack || $process_status_FriendlyStackFatcher) echo "<div class=\"container\"><div class=\"center\"><a href=\"/status.php?tab=1\" onclick=\"return confirm('$error_message');\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">error</i></a></div></div>";
-if ($process_status_pstack || $process_status_FriendlyStackFatcher) echo "<div class=\"container\"><div class=\"center\"><a href=\"/status.php?tab=1\" onclick=\"return confirm('$error_message');\"><img src=\"magic.png\" height=\"70\" width=\"20\"></a></div></div>";
+//if ($process_status_pstack || $process_status_FriendlyStackFatcher) echo "<div class=\"container\"><div class=\"center\"><a href=\"/status.php?tab=1\" onclick=\"return confirm('$error_message');\"><img src=\"magic.png\" height=\"70\" width=\"20\"></a></div></div>";
+echo "<div class=\"container\"><div class=\"center\"><a href=\"/status.php?tab=1\" onclick=\"return confirm('$error_message');\"><img src=\"magic.png\" height=\"70\" width=\"20\"></a></div></div>";
 echo "</body>";
 ?>
