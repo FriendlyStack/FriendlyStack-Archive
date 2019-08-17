@@ -12,14 +12,17 @@
 <script>
 $(document).ready(function() {
 $.ajaxSetup({cache: false}); // fixes older IE caching bug
-
+var previous = 0;
 setInterval(function(){
 $.ajax({
   url:"index.php?action=checkScanner",
   type: 'GET',
   dataType: 'text',
   success : function(data){
+     if (data != previous) {
      if (data == 1 ) $('#checkScanner').html('<center><a href="/?action=Scan"><i class="material-icons md-36 md-dark-green">input</i></a></center>'); else $('#checkScanner').html("");
+}
+previous = data;
   }
 });
 },500); //reload every 500ms

@@ -357,11 +357,22 @@ div.menu {
 
 <script src=\"jquery.min.js\"></script>
 <script>
+var previous = 0;
 $(document).ready(function() {
 $.ajaxSetup({cache: false}); // fixes older IE caching bug
 setInterval(function(){
-    $(\"#status\").attr(\"src\", \"status.php?\"+new Date().getTime());
-},500); //reload every 2000ms
+
+$.ajax({
+  url:\"status.php?action=status\",
+  type: 'GET',
+  dataType: 'text',
+  success : function(data){
+     if (data != previous ) $(\"#status\").attr(\"src\", \"status.php?\"+new Date().getTime());
+  previous = data;
+  }
+});
+
+},500); //reload every 500ms
 });
 </script>
 
@@ -371,7 +382,7 @@ setInterval(function(){
 <input name=\"action\" type=\"hidden\" value=\"find\">
 </form>
 </div>
-<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"38\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>
+<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"42\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>
 </header>
 <script src=\"headroom.js\"></script>
 <script>
