@@ -70,15 +70,19 @@ if ($request['action'] == 'find')
 {
 	find_stuff($con,$request['query']);
 }
+elseif ($request['action'] == 'acknowledge')
+{
+        system("echo -n \"Scan\" > /tmp/FriendlyStack.action");
+        header('Location: status.php');
+}
 elseif ($request['action'] == 'Scan')
 {
         system("echo -n \"Scan\" > /tmp/FriendlyStack.action");
         header('Location: scannerStatus.html');
-	//searchform($request['query']);
 }
 elseif ($request['action'] == 'checkScanner')
 {
-        if(file_exists("/tmp/FriendlyStack.scanner") && !(file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action"))) echo "1"; else echo "0";
+        if(file_exists("/tmp/FriendlyStack.scanner") && !(file_exists("/tmp/FriendlyStack.error") || file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action"))) echo "1"; else echo "0";
 }
 elseif ($request['action'] == 'delete')
 {
@@ -357,7 +361,7 @@ $(document).ready(function() {
 $.ajaxSetup({cache: false}); // fixes older IE caching bug
 setInterval(function(){
     $(\"#status\").attr(\"src\", \"status.php?\"+new Date().getTime());
-},2000); //reload every 2000ms
+},500); //reload every 2000ms
 });
 </script>
 
@@ -365,7 +369,9 @@ setInterval(function(){
 <header id=\"header\" class=\"header header--fixed hide-from-print\" role=\"banner\">
 <iframe id=\"status\" name=\"status\" marginwidth=\"0\" marginheight=\"0\" width=\"20\" height=\"70\" scrolling=\"no\" frameborder=0 src=\"status.php\" align=\"left\">$error_message</iframe><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
 <input name=\"action\" type=\"hidden\" value=\"find\">
-</form></div>
+</form>
+</div>
+<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"38\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>
 </header>
 <script src=\"headroom.js\"></script>
 <script>
@@ -412,9 +418,7 @@ window.addEventListener(\"scroll\", function(){
 }, false);
 
 </script>
-<body bgcolor=\"$bg_color\">
-<br><br><br><br>
-<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\"></iframe>";
+<body bgcolor=\"$bg_color\"><br><br><br><br><br>";
 
 }
 

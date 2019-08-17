@@ -656,9 +656,13 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 print $T chr(0x02) . "9E\n";
                 print $T chr(0x02) . "9a\n";
                 print $T chr(0x02) . "1Error: jammed!" . "\n";
+                open( STATUS_FILE, ">", "/tmp/FriendlyStack.error" );
+                print STATUS_FILE "Error: Check your Scanner, no paper or paper jammed...";
+                close(STATUS_FILE);
                 while ( !( ( CheckHandle($T) =~ /Scan/ ) || ( CheckAction() =~ /Scan/ ) ) ) {
                     select( undef, undef, undef, 0.25 );    #Used to sleep
                 }
+                unlink("/tmp/FriendlyStack.error");
                 print $T chr(0x02) . "9e\n";
                 print $T chr(0x02) . "9u\n";
             }
