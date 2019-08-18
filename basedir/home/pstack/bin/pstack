@@ -349,15 +349,15 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 if ( waitpid( $pid_indexing, WNOHANG ) != 0 ) {
                     $pid_indexing  = 0;
                     $last_indexing = time();
-                    $busy          = "";
-                    print $T chr(0x02) . "9p\n";
+                    if ( $busy eq "*" ) { print $T chr(0x02) . "9p\n"; }
+                    $busy = "";
                     print $T chr(0x02) . "9w\n";
                     unlink("/tmp/FriendlyStack.busy");
                 }
             }
             else {
+                if ( $busy eq "*" ) { print $T chr(0x02) . "9p\n"; }
                 $busy = "";
-                print $T chr(0x02) . "9p\n";
                 print $T chr(0x02) . "9w\n";
                 unlink("/tmp/FriendlyStack.busy");
             }
@@ -607,7 +607,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
             }
 
             #select( ( select($STATUS), $| = 1 )[0] );
-            print $T chr(0x02) . "9B\n";
+            #print $T chr(0x02) . "9B\n";
             while (<$STATUS>) {
 
                 #if ( $_ =~ /Scanned\spage\s(\d+)\.\s\(scanner\sstatus\s\=\s5\)/ ) {
@@ -679,6 +679,8 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
         }
         elsif ( $action =~ /Backup/ ) {
             if ( !testBackupMedia() ) {
+                open( STATUS_FILE, ">", "/tmp/FriendlyStack.backup" );
+                close(STATUS_FILE);
                 print $T chr(0x02) . "9A\n";
                 print $T chr(0x02) . "0$ip" . "\n";
                 print $T chr(0x02) . "1Backup" . "\n";
@@ -787,11 +789,11 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" ) . "\n";
 
             }
-            print $T chr(0x02) . "9b\n";
             print $T chr(0x02) . "9a\n";
             print $T chr(0x02) . "9u\n";
             print $T chr(0x02) . "9t\n";
             print $T chr(0x02) . "9F\n";
+            unlink("/tmp/FriendlyStack.backup");
         }
         elsif ( $action =~ /LAN/ ) {
             print $T chr(0x02) . "0Connecting to" . "\n";
