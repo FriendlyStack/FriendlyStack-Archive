@@ -82,7 +82,7 @@ elseif ($request['action'] == 'Scan')
 }
 elseif ($request['action'] == 'checkScanner')
 {
-        if(file_exists("/tmp/FriendlyStack.scanner") && !(file_exists("/tmp/FriendlyStack.error") || file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action"))) echo "1"; else echo "0";
+        if(file_exists("/tmp/FriendlyStack.scanner") && !(file_exists("/tmp/FriendlyStack.error") || file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action") || file_exists("/tmp/FriendlyStack.backup"))) echo "1"; else echo "0";
 }
 elseif ($request['action'] == 'delete')
 {
