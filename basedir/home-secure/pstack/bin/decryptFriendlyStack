@@ -21,6 +21,7 @@
 system("systemctl stop nmbd.service smbd.service mysql.service");
 
 system("echo -n \"$ARGV[0]\" | cryptsetup luksOpen /home/pstack.crypt pstack -");
+system("mount /dev/mapper/pstack /home/pstack");
 
 my $timer=0;
 while (! -d "/home/pstack/Documents" && $timer < 10) {
