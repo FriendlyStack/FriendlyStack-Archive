@@ -439,6 +439,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
             print $T chr(0x02) . "9A\n";
             print $T chr(0x02) . "9W\n";
             print $T chr(0x02) . "9B\n";
+            print $T chr(0x02) . "1Getting Pictures...\n";
             sleep(10);
 
             #if ( -e "/tmp/camera.FriendlyStack" ) {
