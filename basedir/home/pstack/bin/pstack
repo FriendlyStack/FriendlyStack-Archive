@@ -374,12 +374,16 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
         #print $T chr(0x02)."9b\n";
         #print $T chr(0x02)."9a\n";
         #print $T chr(0x02)."9u\n";
-        print $T chr(0x02) . "0$ip $sd$bd" . "\n";
+        my $line0 = "0$ip $sd$bd";
+        if ($line0 ne $line0_old) {print $T chr(0x02) . "0$ip $sd$bd" . "\n";}
+        my $line0_old = $line0;
         if ( ( ( length($scanner) == 0 ) || !( -e "/dev/bus/usb/$bus/$dev" ) ) && $continue && ( localtime->sec() % 2 == 0 ) ) {
             print $T chr(0x02) . "1No Scanner...!\n";
         }
         else {
-            print $T chr(0x02) . "1" . sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" ) . "\n";
+            my $line1 = sprintf( "%02d:%02d:%02d %s", localtime->hour(), localtime->min(), localtime->sec(), "Ready $busy" );
+            if ($line1 ne $line1_old){ print $T chr(0x02) . "1" . $line1 . "\n";}
+            my $line1_old = $line1;
         }
     }
     else {
