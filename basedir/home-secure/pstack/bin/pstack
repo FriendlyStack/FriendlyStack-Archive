@@ -55,7 +55,7 @@ while ( ( !( -e "/dev/pcontrol" ) ) && $continue && $grace < 10) {
     #if ( $grace > 10 ) { $continue = 0; }
 }
 
-if($grace == 10) { system("ln /dev/null /dev/pcontrol"); }
+if($grace == 10) { system("ln -s /dev/null /dev/pcontrol"); }
 system("stty -F /dev/pcontrol cs8 19200 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts");
 while ( ( !open( $T, "+<", "/dev/pcontrol" ) ) && $continue ) { sleep 1; }
 select( ( select($T), $| = 1 )[0] );
