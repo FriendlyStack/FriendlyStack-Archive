@@ -106,8 +106,9 @@ case 'remove_printer':
 	break;	
 case 'change_hostname':
 	exec("sudo hostnamectl set-hostname ".$request['hostname']);
-	exec("sudo systemctl restart smbd");
-	exec("sudo systemctl restart nmbd");
+	exec("sudo systemctl restart smbd.service");
+	exec("sudo systemctl restart nmbd.service");
+	exec("sudo systemctl restart wsdd.service");
 	list_destinations($con,$request['parent'],$request['action'],$request['tab']);
 	break;
 case 'show_separator':
