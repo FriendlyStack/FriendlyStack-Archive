@@ -2,15 +2,15 @@
 
 ## What ist FriendlyStack
 
-FriendlyStack is a Network Appliance for managing physical and electronic documents as well as photos and videos. Like other appliances (think of a photocopier or a toaster) FriendlyStack is designed to fulfill its purpose as simply and efficiently as possible. FriendlyStack was designed with lazy people in mind. Managing your stuff with FriendlyStack is effortless and doesn’t require a PhD in Computer Wizardry (this is why FriendlyStack's Control Unit has just one button).
+FriendlyStack is a Network Appliance for managing physical and electronic documents as well as photos and videos. Like other appliances (think of a photocopier or a toaster) FriendlyStack is designed to fulfill its purpose as simply and efficiently as possible. FriendlyStack was designed with lazy people in mind. Managing your stuff with FriendlyStack is effortless and doesn’t require a PhD in Computer Wizardry.
 
 Check out [FriendlyStack's Blog](http://friendlystack.blogspot.com) for news about FriendlyStack!!
 
 ## What do you need to use FriendlyStack
 
 * A computer that will run the FriendlyStack software as an appliance (think of a NAS)
-* A document scanner with automatic sheet feeder
-* A FriendlyStack Control Unit (FSCU) to control your appliance. The simplest form of a FSCU is an Arduino Uno R3 with a USB cable and a Addafruit TFT Touch Shield (2.8" resistive, Adafruit PRODUCT ID: 1651)
+* Optional: a document scanner with automatic sheet feeder
+* Optional: a FriendlyStack Control Unit (FSCU) to control your appliance. The simplest form of a FSCU is an Arduino Uno R3 with a USB cable and a Addafruit TFT Touch Shield (2.8" resistive, Adafruit PRODUCT ID: 1651)
 
 ### Minimal Hardware Requirements for the Computer:
 * CPU: Intel compatible, 64 Bit, Support for SSE instructions, at least two cores (while all of this sounds very technical, most of today's and yesterday's CPUs can check all boxes).
@@ -82,3 +82,6 @@ uses the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl.t
 
 FriendlyStack uses [Apache PDFBox®](https://pdfbox.apache.org/) which
 uses the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+FriendlyStack uses [wsdd](https://github.com/christgau/wsdd) which
+uses the [MIT License](https://github.com/christgau/wsdd/blob/master/LICENCE)
