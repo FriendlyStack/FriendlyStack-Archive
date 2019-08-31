@@ -4,6 +4,8 @@
 
 FriendlyStack is a Network Appliance for managing physical and electronic documents as well as photos and videos. Like other appliances (think of a photocopier or a toaster) FriendlyStack is designed to fulfill its purpose as simply and efficiently as possible. FriendlyStack was designed with lazy people in mind. Managing your stuff with FriendlyStack is effortless and doesn’t require a PhD in Computer Wizardry (this is why FriendlyStack's Control Unit has just one button).
 
+Check out [FriendlyStack's Blog](http://friendlystack.blogspot.com) for news about FriendlyStack!!
+
 ## What do you need to use FriendlyStack
 
 * A computer that will run the FriendlyStack software as an appliance (think of a NAS)
