@@ -38,4 +38,5 @@ system("systemctl start pstack.service FriendlyStackWatcher.service");
 
 #This is required on slow systems as Apache might not notice the mount of a different webroot
 system("systemctl reload apache2.service");
+system("systemctl start wsdd.service");
 }
