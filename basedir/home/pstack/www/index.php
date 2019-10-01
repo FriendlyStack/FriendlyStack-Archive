@@ -382,7 +382,6 @@ $.ajax({
 <input name=\"action\" type=\"hidden\" value=\"find\">
 </form>
 </div>
-<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"42\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>
 </header>
 <script src=\"headroom.js\"></script>
 <script>
@@ -429,7 +428,8 @@ window.addEventListener(\"scroll\", function(){
 }, false);
 
 </script>
-<body bgcolor=\"$bg_color\"><br><br><br><br><br>";
+<body bgcolor=\"$bg_color\"><br><br><br><br>
+<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"42\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>";
 
 }
 
