@@ -46,7 +46,7 @@ elseif (file_exists("/tmp/FriendlyStack.error")) {$bg_color='#ff0000'; $error_me
 elseif (file_exists("/tmp/FriendlyStack.busy")) {$bg_color='#ffff00'; $error_message=file_get_contents('/tmp/FriendlyStack.busy');}
 elseif (file_exists("/tmp/FriendlyStack.backup")) {$bg_color='#ffff00'; $error_message="Backup in progress...";}
 elseif (!empty($jobs)) {$bg_color='#ffff00'; $error_message="FriendlyStack is processing print queue...";}
-else {$bg_color='#10322d'; $error_message="";}
+else {$bg_color='#00cc00'; $error_message="Ready";}
 if ($request['action'] == 'status')
 { 
   if ($bg_color == '#10322d') {echo "0";}
