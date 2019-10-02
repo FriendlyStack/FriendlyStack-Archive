@@ -6,6 +6,17 @@
 
 I’ve created FriendlyStack because I couldn’t find a commercial solution that would take care of all the boring work, without adding more boring work. For me, developing FriendlyStack was an opportunity to turn boring work into exciting work. For you FriendlyStack is the opportunity to eliminate boring work and focus on whatever makes you happy!
 
+Essentially FriendlyStack will scan, OCR, index and encrypt your physical documents and make them available through a web frontend. But there's more to FriendlyStack. Check out its current features:
+
+* Scan documents (can either control your scanner or offer a "hot folder" for network scanners)
+* Preprocess documents (page rotation, blank page removal, deskewing)
+* OCR Documents 
+* Index Documents
+* Create previews
+* Use smart cover sheets to: separate documents, route documents, scan multiple single page documents
+* Use virtual printers to print from any application directly into pdf files in a specific folder
+
+
 ### Five Nasty Facts About Evil Paper Stacks
 
 Paper Stacks have a **weird love life**: they merge, grow and reproduce
