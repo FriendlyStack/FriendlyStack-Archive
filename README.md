@@ -1,5 +1,29 @@
 # FriendlyStack
 
+## Going Paperless for the Rest of Us! 
+
+**Sorting, filing and searching paper is boring work…**
+
+I’ve created FriendlyStack because I couldn’t find a commercial solution that would take care of all the boring work, without adding more boring work. For me, developing FriendlyStack was an opportunity to turn boring work into exciting work. For you FriendlyStack is the opportunity to eliminate boring work and focus on whatever makes you happy!
+
+# Five Nasty Facts About Evil Paper Stacks
+
+Paper Stacks have a **weird love life**: they merge, grow and reproduce
+to the point they cover every spot on your desk (and floor).
+
+Paper Stacks tend to **guard their secrets** well: the document you are
+looking for is always at the very bottom of the last stack you work
+your way through (sometimes it isn’t there at all).
+
+Paper Stacks are **not portable**: if you try they’ll break your back or
+tip over (usually they will do both).
+
+Paper Stacks are **resilient**: It’s so much work to sort, file and store
+this stuff, that you’ll just leave them alone or store them away in a
+dark closet (until they strike back, bigger, meaner and dustier than ever).
+
+Paper Stacks **don’t look cool** on your desk (or anywhere else).
+
 ## What ist FriendlyStack
 
 FriendlyStack is a Network Appliance for managing physical and electronic documents as well as photos and videos. Like other appliances (think of a photocopier or a toaster) FriendlyStack is designed to fulfill its purpose as simply and efficiently as possible. FriendlyStack was designed with lazy people in mind. Managing your stuff with FriendlyStack is effortless and doesn’t require a PhD in Computer Wizardry.
