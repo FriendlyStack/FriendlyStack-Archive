@@ -6,7 +6,7 @@
 
 I’ve created FriendlyStack because I couldn’t find a commercial solution that would take care of all the boring work, without adding more boring work. For me, developing FriendlyStack was an opportunity to turn boring work into exciting work. For you FriendlyStack is the opportunity to eliminate boring work and focus on whatever makes you happy!
 
-# Five Nasty Facts About Evil Paper Stacks
+### Five Nasty Facts About Evil Paper Stacks
 
 Paper Stacks have a **weird love life**: they merge, grow and reproduce
 to the point they cover every spot on your desk (and floor).
