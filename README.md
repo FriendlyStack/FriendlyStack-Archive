@@ -1,51 +1,51 @@
-# FriendlyStack
-
 ## Going Paperless for the Rest of Us! 
 
 **Sorting, filing and searching paper is boring work…**
 
 I’ve created FriendlyStack because I couldn’t find a commercial solution that would take care of all the boring work, without adding more boring work. For me, developing FriendlyStack was an opportunity to turn boring work into exciting work. For you FriendlyStack is the opportunity to eliminate boring work and focus on whatever makes you happy!
 
-Essentially FriendlyStack will scan, OCR, index and encrypt your physical documents and make them available through a web frontend. But there's more to FriendlyStack. Check out its current features:
+Essentially FriendlyStack will scan your physical documents and make them available through a user friendly web front end. But there's much more to FriendlyStack:
 
-* Scan documents (can either control your scanner or offer a "hot folder" for network scanners)
+* Operation through a user friendly web frontend or an optional control unit (affordable microcontroler with touch screen in an attractive 3d printed case)
+* Scan documents (FriendlyStack can either control your document scanner or offer a "hot folder" for network scanners)
 * Preprocess documents (page rotation, blank page removal, deskewing)
-* OCR Documents 
-* Index Documents
-* Create previews
+* OCR documents 
+* Index documents (full text search)
+* Create document previews
 * Use smart cover sheets to: separate documents, route documents, scan multiple single page documents
-* Use virtual printers to print from any application directly into pdf files in a specific folder
+* Use virtual printers to print from any application directly to pdf files in a specific folder
+* Encryption of stored files
+* Easy backup and restore functionality
+* Handles electronic files (office files, photos and videos) as well. Just save or copy them to the file share.
 
+Oh, wait, there is more! Managing my photos and videos used to be almost as annoying as organizing paper. So FriendlyStack takes care of these as well. Just connect your digital camera or smart phone to FriendlyStack and it will process your photos and videos automatically:
 
-### Five Nasty Facts About Evil Paper Stacks
+* Transfer your photos and videos to your FriendlyStack
+* Store photos and videos chronologically by year and month
+* Eliminate duplicates
+* Convert videos to low resolution mp4 format (original format and resolution is retained and available as well)
+* Create previews for photos and videos
 
-Paper Stacks have a **weird love life**: they merge, grow and reproduce
-to the point they cover every spot on your desk (and floor).
+Finally you can find your stuff by combining keywords just like in your favorite search engine. There are however a few extras:
 
-Paper Stacks tend to **guard their secrets** well: the document you are
-looking for is always at the very bottom of the last stack you work
-your way through (sometimes it isn’t there at all).
+* Keywords can be located within a document or be part of the filename or path.
+* Preceding a keyword with a "-" will display results *not* containing the specific word.
+* FriendlyStack will interpret dates: "November 18 2018 invoice" will retrieve all files dated November 18th 2018 containing the word "invoice" in the document, file- or pathname. Dated here refers either a date within the document or if none is found, the date the file was saved.
+* FriendlyStack also understands file types: "photo December 25" will produce the Christmas pictures of any year saved in your system (you might want to limit this by adding a year)
 
-Paper Stacks are **not portable**: if you try they’ll break your back or
-tip over (usually they will do both).
-
-Paper Stacks are **resilient**: It’s so much work to sort, file and store
-this stuff, that you’ll just leave them alone or store them away in a
-dark closet (until they strike back, bigger, meaner and dustier than ever).
-
-Paper Stacks **don’t look cool** on your desk (or anywhere else).
-
-## What ist FriendlyStack
+## What is FriendlyStack
 
 FriendlyStack is a Network Appliance for managing physical and electronic documents as well as photos and videos. Like other appliances (think of a photocopier or a toaster) FriendlyStack is designed to fulfill its purpose as simply and efficiently as possible. FriendlyStack was designed with lazy people in mind. Managing your stuff with FriendlyStack is effortless and doesn’t require a PhD in Computer Wizardry.
 
-Check out [FriendlyStack's Blog](http://friendlystack.blogspot.com) for news about FriendlyStack!!
+Technically FriendlyStack is a Linux server working as an appliance and running Ubuntu Server 16.04 LTS (at some point I will migrate to a newer LTS release, but this is currently no priority). It acts as file-, print- and web-server running a bunch of software doing the FriendlyStack magic. FriendlyStack is mostly written in Perl and PHP with some bits and pieces implemented in C and shell scrips.
+
+Installation is simple by using the provided install script. I'm also working on a fully automated "bare metal" installation image.
 
 ## What do you need to use FriendlyStack
 
 * A computer that will run the FriendlyStack software as an appliance (think of a NAS)
 * Optional: a document scanner with automatic sheet feeder
-* Optional: a FriendlyStack Control Unit (FSCU) to control your appliance. The simplest form of a FSCU is an Arduino Uno R3 with a USB cable and a Addafruit TFT Touch Shield (2.8" resistive, Adafruit PRODUCT ID: 1651)
+* Optional: a FriendlyStack Control Unit (FSCU) to control your appliance.
 
 ### Minimal Hardware Requirements for the Computer:
 * CPU: Intel compatible, 64 Bit, Support for SSE instructions, at least two cores (while all of this sounds very technical, most of today's and yesterday's CPUs can check all boxes).
@@ -59,6 +59,7 @@ Check out [FriendlyStack's Blog](http://friendlystack.blogspot.com) for news abo
 * Duplex Scanning
 * USB Connection
 * Linux Drivers (support for Ubuntu 16.04)
+* Optionally, if no Linux drivers are available: network support, capable of saving pdf files to a windows/samba/CIFS share
 
 ## License
 
