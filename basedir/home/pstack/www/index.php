@@ -84,16 +84,22 @@ elseif ($request['action'] == 'checkScanner')
 {
         if(file_exists("/tmp/FriendlyStack.scanner") && !(file_exists("/tmp/FriendlyStack.error") || file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action") || file_exists("/tmp/FriendlyStack.backup"))) echo "1"; else echo "0";
 }
+elseif ($request['action'] == 'checkBackupMedia')
+{
+	//0=No USB Drive Connected, 1=USB Drive Connected but not registered, 2=USB Drive Connected and Registered, 3=Backup in Progress
+        //if(file_exists("/tmp/FriendlyStack.BackupMedia") && !(file_exists("/tmp/FriendlyStack.error") || file_exists("/tmp/FriendlyStack.scanning") || file_exists("/tmp/FriendlyStack.action") || file_exists("/tmp/FriendlyStack.backup"))) echo "1"; elseif (file_exists("/tmp/FriendlyStack.backup")) echo "2"; else echo "0";
+	if(file_exists("/dev/backup") && !file_exists("/tmp/FriendlyStack.BackupMedia")) echo "1";
+	elseif(file_exists("/tmp/FriendlyStack.BackupMedia") && !file_exists("/tmp/FriendlyStack.backup")) echo "2";
+	elseif(file_exists("/tmp/FriendlyStack.backup")) echo "3";
+	else echo "0";
+}
 elseif ($request['action'] == 'delete')
 {
-	//UPDATE `pStack`.`Documents` SET `path`='/home/picture_flat/flat2/2015/02/###Deleted###2015-02-12 10-14-49 0000_P1040585.JPG' WHERE `ID`='250388';
 	$query = "SELECT * FROM Documents where ID='".$request['ID']."'";
 	$result = mysqli_query($con,$query);
 	$row = mysqli_fetch_assoc($result);
-	//rename($basepath.$row['relpath'],$basepath.dirname($row['relpath'])."/###Deleted###".basename($row['relpath']));
 	rename($basepath[$row['Media']].$row['relpath'],$basepath[$row['Media']].dirname($row['relpath'])."/###Deleted###".basename($row['relpath']));
 	$query="UPDATE `pStack`.`Documents` SET `path`='".dirname($row['path'])."/###Deleted###".basename($row['path'])."', Deleted=1 WHERE `ID`='".$request['ID']."'";
-	#$result = mysqli_query($con,utf8_encode ($query));
 	$result = mysqli_query($con,$query);
 
 	find_stuff($con,$request['query']);
@@ -104,7 +110,6 @@ elseif ($request['action'] == 'download')
 	$result = mysqli_query($con,$query);
 	$row = mysqli_fetch_assoc($result);
         if($request['media'] == 'Video') {
-        //$length   = sprintf("%u", filesize("/home/pstack/Transcoded_Videos/".basename($row['path']).".mp4"));
         $length   = sprintf("%u", filesize("/home/pstack/Previews/".$request['ID'].".mp4.mp4"));
         } else {
         if($request['media'] == 'Document') {
@@ -125,7 +130,6 @@ elseif ($request['action'] == 'download')
         } elseif ($request['media'] == 'Picture') {
               header('Content-Type: image/jpeg');
               header('Content-Disposition: inline; filename='.utf8_decode(basename($row['path'])));
-              //header('Content-Disposition: attachment; filename='.utf8_decode(basename($row['path'])));
         } elseif ($request['media'] == 'Video') {
               header('Content-Type: video/mp4');
         }
@@ -135,16 +139,6 @@ while (ob_get_level()) {
     ob_end_clean();
 } 
         if($request['media'] == 'Video') {
-        //readfile("/home/pstack/Transcoded_Videos/".basename($row['path']).".mp4");
-
-
-
-
-
-
-
-
-//$file = "/home/pstack/Transcoded_Videos/".basename($row['path']).".mp4";
 $file = "/home/pstack/Previews/".$request['ID'].".mp4.mp4";
 $fp = @fopen($file, 'rb');
 
@@ -154,7 +148,6 @@ $start  = 0;               // Start byte
 $end    = $size - 1;       // End byte
 
 header('Content-type: video/mp4');
-//header("Accept-Ranges: 0-$length");
 header("Accept-Ranges: bytes");
 if (isset($_SERVER['HTTP_RANGE'])) {
 

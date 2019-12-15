@@ -416,10 +416,12 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
     if ( !testBackupMedia() ) {
         $bd = "BD";
         print $T chr(0x02) . "9D\n";
+	`touch /tmp/FriendlyStack.BackupMedia`;
     }
     else {
         $bd = "";
         print $T chr(0x02) . "9d\n";
+	unlink("/tmp/FriendlyStack.BackupMedia");
     }
 
     #PTP Camera Import Stuff
