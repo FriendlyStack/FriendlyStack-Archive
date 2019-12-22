@@ -30,7 +30,7 @@ function onMyFrameLoad() {
 top.location = "/destinations.php?tab=2";
 };
 </script>
-</head>
+<link href="/fontawesome-free-5.11.2-web/css/all.css" rel="stylesheet">
 <style>
 div.test {
   font-size:90px;
@@ -38,16 +38,12 @@ div.test {
 }
 
 </style>
-<link rel="stylesheet" href="/font-awesome-4.7.0/css/font-awesome.min.css">
+</head>
 <body>
 <iframe id="status" marginwidth="0" maginheight="0" width="20" height="70" scrolling="no" frameborder=0 src="busy1.php" align="left" onload="onMyFrameLoad()");"></iframe>
 
 <div class="test">
-<i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-<span class="sr-only">Initializing...</span>
-<i class="fa fa-cog fa-spin fa-3x fa-fw"></i>
-<span class="sr-only">Initializing...</span>
-<i class="fa fa-refresh fa-spin fa-3x fa-fw"></i>
+<i class="fas fa-spinner fa-spin fa-3x"></i>
 <span class="sr-only">Initializing...</span>
 </div>
 EOT;
