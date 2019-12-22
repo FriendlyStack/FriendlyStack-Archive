@@ -113,6 +113,11 @@ uses the [GNU General Public License v2.0](https://github.com/gphoto/gphoto2/blo
 FriendlyStack uses [libgphoto2](https://github.com/gphoto/libgphoto2) which
 uses the [GNU Lesser General Public License v2.1](https://github.com/gphoto/libgphoto2/blob/master/COPYING)
 
+FriendlyStack uses [Font Awesome](https://fontawesome.com) which
+uses the [CC BY 4.0 License](https://creativecommons.org/licenses/by/4.0/) for Icons
+the [SIL OFL 1.1 License](https://scripts.sil.org/OFL) for Fonts
+and the [MIT License](https://opensource.org/licenses/MIT) for Code
+
 FriendlyStack uses [QR-code generator](https://prgm.spipu.net/view/27) which
 uses the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl.txt)
 
