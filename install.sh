@@ -333,4 +333,7 @@ useradd -r -G plugdev -d /var/lib/usbmux -s /sbin/nologin usbmux -c "usbmux daem
 
 sync
 sync
+systemctl daemon-reload
 systemctl restart apache2.service usbmuxd.service cups.service cups-browsed.service
+systemctl start FriendlyStackWatcher.service pstack.service
+
