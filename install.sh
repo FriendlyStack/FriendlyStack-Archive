@@ -11,10 +11,7 @@
 # Default-Stop:      0
 # X-Interactive: true
 # Short-Description: Regular background program processing daemon
-# Description:       cron is a standard UNIX program that runs user-specified
-#                    programs at periodic scheduled times. vixie cron adds a
-#                    number of features to the basic UNIX cron, including better
-#                    security and more powerful configuration options.
+# Description:       Installs FriendlyStack
 ### END INIT INFO
 
 
@@ -38,6 +35,11 @@
 if [ -f /home/FriendlyStack.autoinstall ]
 then
 SCRIPTPATH=/home/FriendlyStack
+modprobe pcspkr
+sleep 10
+echo -en "\a" > /dev/console
+echo -en "\033[2J" > /dev/console
+echo "Please stand by while FriendlyStack is being installed..." > /dev/console
 else
 SCRIPTPATH=$( cd $(dirname $0) ; pwd -P )
 fi
@@ -317,13 +319,6 @@ update-rc.d -f smbd disable
 update-rc.d -f nmbd disable
 update-rc.d -f cups disable
 
-
-
-
-update-rc.d -f FriendlyStackInstaller disable
-
-
-
 ##For added security uncomment these
 #update-rc.d ssh disable
 #chsh -s /usr/sbin/nologin friendly
@@ -337,3 +332,13 @@ systemctl daemon-reload
 systemctl restart apache2.service usbmuxd.service cups.service cups-browsed.service udev.service
 systemctl start FriendlyStackWatcher.service pstack.service
 
+if [ -f /home/FriendlyStack.autoinstall ]
+then
+update-rc.d -f FriendlyStackInstaller disable
+rm /etc/init.d/FriendlyStackInstaller
+sleep 5
+echo -en "\033[2J" > /dev/console
+echo -en "\a\a\a" > /dev/console
+echo "The installation of FriendlyStack has been completed!" > /dev/console
+echo "You can connect to FriendlyStack on http://$CN" > /dev/console
+fi

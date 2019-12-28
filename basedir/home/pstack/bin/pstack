@@ -93,6 +93,11 @@ my $tempdir = "/home/pstack/tmp";
 my $scandir       = "/home/pstack/ScanInbox";
 my %scannerConfig = ParseConfig("FriendlyStack.conf");
 
+#remove any flag files from previous runs
+`rm /tmp/FriendlyStack.*`;
+`rm /tmp/*.FriendlyStack`;
+
+
 open( PWHANDLE, "<", "/home/pstack/bin/mysql.pwd" );
 my $sqlPassword = <PWHANDLE>;
 chomp($sqlPassword);
@@ -442,6 +447,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
             print $T chr(0x02) . "9W\n";
             print $T chr(0x02) . "9B\n";
             print $T chr(0x02) . "1Getting Pictures...\n";
+            `touch /tmp/FriendlyStack.gettingPictures`;
             sleep(10);
 
             #if ( -e "/tmp/camera.FriendlyStack" ) {
@@ -503,16 +509,21 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
                 system("fusermount -u /mnt");
                 $rc = $rc + $?;
             }
+            unlink("/tmp/FriendlyStack.gettingPictures");
             if ($rc) {
                 print $T chr(0x02) . "9b\n";
                 print $T chr(0x02) . "9E\n";
                 print $T chr(0x02) . "0Transfer Failed!" . "\n";
                 print $T chr(0x02) . "1Try again" . "\n";
                 print $T chr(0x02) . "9a\n";
-                while ( !( CheckHandle($T) =~ /Scan/ ) ) {
+                open( STATUS_FILE, ">", "/tmp/FriendlyStack.error" );
+                print STATUS_FILE "Error: Transfer failed, try again...";
+                close(STATUS_FILE);
+                while ( !( ( CheckHandle($T) =~ /Scan/ ) || ( CheckAction() =~ /Scan/ ) ) ) {
                     print $T chr(0x02) . "9W\n";
                     select( undef, undef, undef, 0.25 );    #Used to sleep
                 }
+                unlink("/tmp/FriendlyStack.error");
                 print $T chr(0x02) . "9a\n";
                 print $T chr(0x02) . "9e\n";
                 print $T chr(0x02) . "9u\n";

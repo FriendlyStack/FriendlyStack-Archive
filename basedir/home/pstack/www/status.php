@@ -45,6 +45,7 @@ if ($process_status_pstack || $process_status_FriendlyStackFatcher) {$bg_color='
 elseif (file_exists("/tmp/FriendlyStack.error")) {$bg_color='#ff0000'; $error_message=file_get_contents('/tmp/FriendlyStack.error');}
 elseif (file_exists("/tmp/FriendlyStack.busy")) {$bg_color='#ffff00'; $error_message=file_get_contents('/tmp/FriendlyStack.busy');}
 elseif (file_exists("/tmp/FriendlyStack.backup")) {$bg_color='#ffff00'; $error_message="Backup in progress...";}
+elseif (file_exists("/tmp/FriendlyStack.gettingPictures")) {$bg_color='#ffff00'; $error_message="Transfering Pictures and Videos...";}
 elseif (!empty($jobs)) {$bg_color='#ffff00'; $error_message="FriendlyStack is processing print queue...";}
 else {$bg_color='#00cc00'; $error_message="Ready";}
 if ($request['action'] == 'status')
