@@ -24,10 +24,10 @@ CN2=`hostname | xargs`.local
 export SAN=IP:$CN,DNS:$CN1,DNS:$CN2
 
 #Generate CSR for Apache Server
-openssl req -new -extensions v3_req -key /etc/apache2/ssl/apache.key -out /etc/apache2/ssl/apache.csr -sha512 -passin pass:FriendlyStack -subj "/C=CH/ST=BS/L=BS/O=FriendlyStack/OU=FriendlyStack/CN=$CN" -config /root/openssl.cfg
+openssl req -new -extensions v3_req -key /etc/apache2/ssl/apache.key -out /etc/apache2/ssl/apache.csr -sha512 -passin pass:FriendlyStack -subj "/C=CH/ST=BS/L=BS/O=FriendlyStack/OU=FriendlyStack/CN=$CN" -config /home/FriendlyStack/openssl.cfg
 
 #Generate and sign certificate for Apache Server
-openssl x509 -req -extfile /root/openssl.cfg -extensions v3_req -in /etc/apache2/ssl/apache.csr -CA /home/pstack/CA/intermediate.crt -CAkey /home/pstack/CA/intermediate-ca-key.pem -CAcreateserial -out /etc/apache2/ssl/apache.crt -days 365 -sha512 -passin pass:FriendlyStackIntermediate
+openssl x509 -req -extfile /home/FriendlyStack/openssl.cfg -extensions v3_req -in /etc/apache2/ssl/apache.csr -CA /home/pstack/CA/intermediate.crt -CAkey /home/pstack/CA/intermediate-ca-key.pem -CAcreateserial -out /etc/apache2/ssl/apache.crt -days 365 -sha512 -passin pass:FriendlyStackIntermediate
 
 rm /etc/apache2/ssl/apache.csr
 cp /home/pstack/CA/ca-root.pem /home/pstack/www/FriendlyStack.crt

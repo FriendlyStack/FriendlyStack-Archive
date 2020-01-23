@@ -2,7 +2,7 @@
 
 
 //FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
-//Copyright (C) 2018,2019,2020  Dimitrios F. Kallivroussis, Friendly River LLC
+//Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
 //
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU Affero General Public License as
@@ -103,6 +103,7 @@ case 'change_hostname':
 	exec("sudo systemctl restart smbd.service");
 	exec("sudo systemctl restart nmbd.service");
 	exec("sudo systemctl restart wsdd.service");
+	exec("sudo /home/pstack/bin/updateCrt.sh");
 	list_destinations($con,$request['parent'],$request['action'],$request['tab']);
 	break;
 case 'show_separator':
@@ -340,6 +341,9 @@ if (isset($sn[1])) {
         echo "<form action=\"destinations.php\" method=\"post\" id=\"add-backup-media\" name=\"destination_form\">";
 	echo "<div class=\"destination\"> <a href=\"#\" onclick=\"document.getElementById('add-backup-media').submit();\"><i class=\"material-icons md-dark-green md-destination\">add_box</i></a>";
         echo "<input type=\"text\" name=\"name\"> (S/N: {$sn[1]})";
+        if(preg_match('/FriendlyStack_BackupMedia/', `sudo ntfslabel /dev/backup1`)) {
+	echo "<div class=\"destination\"><a href=\"destinations.php?action=restore\"><i class=\"material-icons md-dark-green md-destination\">storage</i></a>Restore (all data on disk will be overwritten)</div>";
+        }
 	echo "<input type=\"hidden\" name=\"action\" value=\"add_backup_media\"><input type=\"hidden\" name=\"serialNumber\" value=\"".$sn[1]."\">";
 	echo "<input type=\"hidden\" name=\"tab\" value=\"2\"></form>";
 }

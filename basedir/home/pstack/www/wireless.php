@@ -60,6 +60,7 @@ function generate_config($INTERFACE,$SSID,$PASSPHRASE)
 	header("Pragma: no-cache");
 	echo "<pre>";
 	system("sudo /home/pstack/bin/wifiConfig $SSID $PASSPHRASE");
+        exec("sudo /home/pstack/bin/updateCrt.sh");
 }
 ?>
 
