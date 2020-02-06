@@ -44,6 +44,7 @@ sub feedstack {
     my $PDFTOTEXT = "/usr/bin/pdftotext";
     my $CONVERT   = `which convert`;
     chomp $CONVERT;
+    $CONVERT   = "/usr/local/bin/convert";
 
     use Image::ExifTool;
     use Lingua::Identify qw(:language_identification);
@@ -72,13 +73,13 @@ sub feedstack {
     $exifTool = new Image::ExifTool;
 
     #if ((-f $file) && ($file =~ /\.(pdf|jpg|jpeg|r[a]?w2|avi|mp4|mts|mov)$/i) && !(-f "/home/videos/".basename($file).".mp4"))
-    if ( ( -f $file ) && ( $file =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?)$|xls[x]?|ppt[x]?|vsd[x]?|vdx/i ) ) {
+    if ( ( -f $file ) && ( $file =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?)$|xls[x]?|ppt[x]?|vsd[x]?|vdx/i ) ) {
         $path = $file;
         $quotedpath = $dbh->quote( decode( 'utf-8', $path ) );
 
         #$quotedpath = $dbh->quote( $path );
         $language = "N/A";
-        if ( $file =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) { $extension = $1 }
+        if ( $file =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) { $extension = $1 }
         @mdate = CORE::localtime( stat($file)->mtime );
         $ts    = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
         $sth   = $dbh->prepare("select ID from Documents where path=$quotedpath and timestamp(ts)=timestamp($ts)");
@@ -237,7 +238,7 @@ sub feedstack {
                 }
                 if ( $ContentDate eq "NULL" ) { $ContentDate = $ts }
             }
-            elsif ( $extension =~ /jp[e]?g|png|bmp/i ) {
+            elsif ( $extension =~ /jp[e]?g|png|heic|bmp/i ) {
                 $media = "Picture";
 
                 #$basepath = "/home/pstack/Multimedia";
@@ -246,10 +247,31 @@ sub feedstack {
                 #if ( $ocr == 1 ) { $scommand = "/usr/local/bin/abbyyocr11 -ido --detectTextOnPictures --enableAggressiveTextExtraction -recc -rldm yes -rl German English French --outputToStdout -if " . "\"" . $path . "\""; $content = decode( 'utf-8', `$scommand` ); $language = langof($content); }
                 #if ( $ocr == 1 ) { $scommand = "/usr/bin/tesseract " . "\"" . $path . "\" stdout"; $content = decode( 'utf-8', `$scommand` ); $language = langof($content); }
                 if ( $ocr == 1 ) { $scommand = "/home/pstack/bin/FriendlyStackOCR " . "\"" . $path . "\" -"; $content = decode( 'utf-8', `$scommand` ); $language = langof($content); print "$content\n"; }
-                else             { $content = "NULL" }
+                else             { $content = "NULLi" }
 
                 #if ($ocr==1) {$scommand="/usr/local/bin/abbyyocr11 -ido --detectTextOnPictures --enableAggressiveTextExtraction -recc -rldm yes -rl German English French --outputToStdout -if "."\"".$path."\""; $content=`$scommand`; $language=langof($content);} else {$content="NULL"}
                 $info = $exifTool->ImageInfo($path);
+                #46 deg 24' 37.95"
+                $$info{'GPSLatitude'} =~ /(\d{1,2}) deg (\d{1,2})\' (\d{1,2}\.\d{1,2})\"/;
+                my $latitude = $1 + ($2/60) + ($3/(60*60));
+                $$info{'GPSLongitude'} =~ /(\d{1,2}) deg (\d{1,2})\' (\d{1,2}\.\d{1,2})\"/;
+                my $longitude = $1 + ($2/60) + ($3/(60*60));
+                my $dist=1;
+                $sth = $dbh->prepare("SELECT a.asciiname, d.asciiname as admin2,e.asciiname as admin1,g.asciiname as coutry,i.asciiname as continent,  3956 * 2 * ASIN(SQRT(  POWER(SIN(($latitude - a.latitude) * pi()/180 / 2), 2) +  COS($latitude * pi()/180) *  COS(a.latitude * pi()/180) *  POWER(SIN(($longitude -a.longitude) * pi()/180 / 2), 2)  )) as distance
+FROM  geonames.geo_01allCountries a
+JOIN geonames.geo_admin1codesascii b ON b.code=CONCAT(a.country,\".\",a.admin1)
+JOIN geonames.geo_admin2codes c ON c.code=CONCAT(a.country,\".\",a.admin1,\".\",a.admin2)
+JOIN geonames.geo_01allCountries d ON c.geonameid = d.geonameid
+JOIN geonames.geo_01allCountries e ON b.geonameid = e.geonameid
+JOIN geonames.geo_hierarchy f on e.geonameid = f.childId and f.type='ADM'
+JOIN geonames.geo_01allCountries g ON f.parentId = g.geonameid
+JOIN geonames.geo_hierarchy h on g.geonameid = h.childId and h.type='ADM'
+JOIN geonames.geo_01allCountries i ON h.parentId = i.geonameid
+WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 1;");
+                $rv  = $sth->execute;
+                $row = $sth->fetchrow_hashref();
+                $content = "$row->{'asciiname'} $row->{'admin2'} $row->{'admin1'} $row->{'coutry'} $row->{'continent'}";
+                #$content = "$$info{'GPSLatitude'},$$info{'GPSLongitude'}";
                 if    ( $$info{'CreateDate'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ )       { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
                 elsif ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
                 elsif ( basename($path) =~ /^(\d{4})\-(\d{2})\-(\d{2})\s(\d{2})\-(\d{2})\-(\d{2}).*/ )         { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
@@ -321,8 +343,10 @@ sub feedstack {
                 #$scommand = "$CONVERT \"$path\"[0] -density 100 -resize 720 -flatten -background white -type Grayscale -page +4+4 -alpha set \\( +clone -background black -shadow 60x4+4+4 \\) +swap -background none -mosaic /home/pstack/Previews/$row->{'ID'}.png";
                 system("$scommand");
             }
-            elsif ( $extension =~ /jp[e]?g|png|bmp/i ) {
-                $scommand = "$CONVERT \"$path\" -auto-orient -resize 180 -bordercolor snow -background black +polaroid /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null";
+            elsif ( $extension =~ /jp[e]?g|png|heic|bmp/i ) {
+                #$scommand = "$CONVERT \"$path\" -auto-orient -resize 180 -bordercolor snow -background black +polaroid /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null";
+                $scommand = "$CONVERT \"$path\" -resize 180 /home/pstack/Previews/$row->{'ID'}.png";
+                print "$scommand\n";
                 system("$scommand");
 
             }

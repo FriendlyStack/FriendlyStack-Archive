@@ -40,3 +40,109 @@ CREATE TABLE `BackupMedia` (
   UNIQUE KEY `SerianNumber_UNIQUE` (`SerialNumber`),
   UNIQUE KEY `ID_UNIQUE` (`ID`)
 ) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+
+DROP DATABASE IF EXISTS `geonames`;
+CREATE DATABASE `geonames` DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+DROP TABLE IF EXISTS `geo_01cities500`;
+
+CREATE TABLE `geo_01cities500` (
+    `geonameid` INT(11) NOT NULL,
+    `name` VARCHAR(200) DEFAULT NULL,
+    `asciiname` VARCHAR(200) DEFAULT NULL,
+    `alternatenames` VARCHAR(4000) DEFAULT NULL,
+    `latitude` DECIMAL(10 , 7 ) DEFAULT NULL,
+    `longitude` DECIMAL(10 , 7 ) DEFAULT NULL,
+    `fclass` CHAR(1) DEFAULT NULL,
+    `fcode` VARCHAR(10) DEFAULT NULL,
+    `country` VARCHAR(2) DEFAULT NULL,
+    `cc2` VARCHAR(60) DEFAULT NULL,
+    `admin1` VARCHAR(20) DEFAULT NULL,
+    `admin2` VARCHAR(80) DEFAULT NULL,
+    `admin3` VARCHAR(20) DEFAULT NULL,
+    `admin4` VARCHAR(20) DEFAULT NULL,
+    `population` INT(11) DEFAULT NULL,
+    `elevation` INT(11) DEFAULT NULL,
+    `gtopo30` INT(11) DEFAULT NULL,
+    `timezone` VARCHAR(40) DEFAULT NULL,
+    `moddate` DATE DEFAULT NULL,
+    PRIMARY KEY (`geonameid`),
+    KEY `name` (`name`),
+    KEY `asciiname` (`asciiname`),
+    KEY `latitude` (`latitude`),
+    KEY `longitude` (`longitude`),
+    KEY `fclass` (`fclass`),
+    KEY `fcode` (`fcode`),
+    KEY `country` (`country`),
+    KEY `cc2` (`cc2`),
+    KEY `admin1` (`admin1`),
+    KEY `population` (`population`),
+    KEY `elevation` (`elevation`),
+    KEY `timezone` (`timezone`)
+)  ENGINE=MYISAM DEFAULT CHARSET=UTF8 COLLATE UTF8_UNICODE_CI;
+
+
+
+/*LOAD DATA LOCAL INFILE 'cities500.txt' INTO TABLE `geo_01cities500` CHARACTER SET 'latin1';*/
+
+CREATE TABLE `geo_01allCountries` (
+    `geonameid` INT(11) NOT NULL,
+    `name` VARCHAR(200) DEFAULT NULL,
+    `asciiname` VARCHAR(200) DEFAULT NULL,
+    `alternatenames` VARCHAR(4000) DEFAULT NULL,
+    `latitude` DECIMAL(10 , 7 ) DEFAULT NULL,
+    `longitude` DECIMAL(10 , 7 ) DEFAULT NULL,
+    `fclass` CHAR(1) DEFAULT NULL,
+    `fcode` VARCHAR(10) DEFAULT NULL,
+    `country` VARCHAR(2) DEFAULT NULL,
+    `cc2` VARCHAR(60) DEFAULT NULL,
+    `admin1` VARCHAR(20) DEFAULT NULL,
+    `admin2` VARCHAR(80) DEFAULT NULL,
+    `admin3` VARCHAR(20) DEFAULT NULL,
+    `admin4` VARCHAR(20) DEFAULT NULL,
+    `population` INT(11) DEFAULT NULL,
+    `elevation` INT(11) DEFAULT NULL,
+    `gtopo30` INT(11) DEFAULT NULL,
+    `timezone` VARCHAR(40) DEFAULT NULL,
+    `moddate` DATE DEFAULT NULL,
+    PRIMARY KEY (`geonameid`),
+    KEY `name` (`name`),
+    KEY `asciiname` (`asciiname`),
+    KEY `latitude` (`latitude`),
+    KEY `longitude` (`longitude`),
+    KEY `fclass` (`fclass`),
+    KEY `fcode` (`fcode`),
+    KEY `country` (`country`),
+    KEY `cc2` (`cc2`),
+    KEY `admin1` (`admin1`),
+    KEY `population` (`population`),
+    KEY `elevation` (`elevation`),
+    KEY `timezone` (`timezone`)
+)  ENGINE=MYISAM DEFAULT CHARSET=UTF8 COLLATE UTF8_UNICODE_CI;
+
+/*LOAD DATA LOCAL INFILE 'allCountries.txt' INTO TABLE `geo_01allCountries` CHARACTER SET 'latin1';*/
+
+CREATE TABLE `geo_admin1codesascii` (
+  `code` char(15) DEFAULT NULL,
+  `name` text,
+  `nameAscii` text,
+  `geonameid` int(11) DEFAULT NULL,
+  KEY `code` (`code`),
+  KEY `name` (`name`(20)),
+  KEY `nameAscii` (`nameAscii`(20)),
+  KEY `geonameid` (`geonameid`)
+) ENGINE=MYISAM DEFAULT CHARSET=utf8 COLLATE utf8_unicode_ci;
+
+/*LOAD DATA LOCAL INFILE 'admin1CodesASCII.txt' INTO TABLE `geo_admin1codesascii` CHARACTER SET 'UTF8';*/
+
+CREATE TABLE `geo_admin2codes` (
+  `code` char(15) DEFAULT NULL,
+  `name` text,
+  `nameAscii` text,
+  `geonameid` int(11) DEFAULT NULL,
+  KEY `code` (`code`),
+  KEY `name` (`name`(80)),
+  KEY `nameAscii` (`nameAscii`(80)),
+  KEY `geonameid` (`geonameid`)
+) ENGINE=MYISAM DEFAULT CHARSET=utf8 COLLATE utf8_unicode_ci;
+
+/*LOAD DATA LOCAL INFILE 'admin2Codes.txt' INTO TABLE `geo_admin2codes` CHARACTER SET 'UTF8';*/

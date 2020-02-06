@@ -310,7 +310,7 @@ while ( ( -e "/dev/pcontrol" ) && $continue ) {
 
                     sub index_files {
                         my $file = $_;
-                        if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(pdf|jpg|jpeg|png|bmp|r[a]?w2|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $File::Find::name =~ /\/\..*$|\~.*$/ ) ) {
+                        if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(pdf|jpg|jpeg|png|bmp|heic|r[a]?w2|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $File::Find::name =~ /\/\..*$|\~.*$/ ) ) {
                             $path       = decode( 'utf-8', $File::Find::name );
                             $quotedpath = $dbh->quote($path);
                             @mdate      = CORE::localtime( stat($File::Find::name)->mtime );
@@ -891,7 +891,8 @@ sub do_ocr {
                             `$scommand` =~ /\b(\d+)x(\d+)\b/;
                             if ( ( ( $1 * $2 ) / ( 298 * 421 ) ) < 0.55 ) {
                                 if ( $OCR_ENGINE eq "TESSERACT" ) {
-                                    $scommand = "/usr/bin/convert $page -deskew 50% -trim  +repage $page";
+                                    #$scommand = "/usr/bin/convert $page -deskew 50% -trim  +repage $page";
+                                    $scommand = "/usr/bin/convert $page -deskew 50% $page";
                                 }
                                 elsif ( ( $OCR_ENGINE eq "ABBYYOCR" ) || ( $OCR_ENGINE eq "NSOCR" ) ) {
                                     $scommand = "/usr/bin/convert $page -trim  +repage $page";
@@ -1174,9 +1175,17 @@ sub picsort {
     my $destination = "/home/pstack/Multimedia";
     my ( $count, $newname, @mdate, $info, $newfile, $newdir, $md5_source, $md5_destination, $SOURCE, $DESTINATION );
     my $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
-    if ( ( -f $file ) && ( $file =~ /\.(jp[e]?g|r[a]?w2|avi|mp4|bmp|png|mts|mov)$/i ) && !( $file =~ /\/\..*$/ ) )
+    if ( ( -f $file ) && ( $file =~ /\.(jp[e]?g|r[a]?w2|avi|mp4|bmp|png|heic|mts|mov)$/i ) && !( $file =~ /\/\..*$/ ) )
 
     {
+        if( ( -f $file ) && ( $file =~ /\.(heic)$/i ) && !( $file =~ /\/\..*$/ ) ) {
+            $file =~ /.*\/([^\/]+)\.(heic)$/i;
+            my $tmpName = $1;
+            system("mkdir /tmp/$$");
+            system("/usr/local/bin/heif-convert \"$file\" \"/tmp/$$/$tmpName.jpg\"");
+            unlink($file);
+            $file="/tmp/$$/$tmpName.jpg";
+        }
         $count = 0;
         $info  = $exifTool->ImageInfo($file);
         if ( $$info{'CreateDate'} ) {
@@ -1268,7 +1277,7 @@ sub picsort {
 
 sub listfiles {
     my ( $OCR, $Delete ) = @_;
-    if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(jpg|jpeg|r[a]?w2|avi|mp4|png|bmp|mts|mov)$/i ) && !( $File::Find::name =~ /\/\..*$/ ) ) {
+    if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(jpg|jpeg|r[a]?w2|avi|mp4|png|heic|bmp|mts|mov)$/i ) && !( $File::Find::name =~ /\/\..*$/ ) ) {
         if ( !exists( $filequeue{$File::Find::name} ) ) {
 
             if ( ( !`lsof \"$File::Find::name\"` ) && ( ( -s $File::Find::name ) > 0 ) ) {

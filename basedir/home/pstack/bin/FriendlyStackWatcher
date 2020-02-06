@@ -56,11 +56,11 @@ my $daemon = Proc::Daemon->new(
     setuid   => '0',
     setgid   => '0',
 
-    #child_STDOUT => '+>>FriendlyStackWatcher.log',
+    child_STDOUT => '+>>FriendlyStackWatcher.log',
 
-    #child_STDERR => '+>>FriendlyStackWatcher.log',
-    child_STDOUT => '/dev/null',
-    child_STDERR => '/dev/null',
+    child_STDERR => '+>>FriendlyStackWatcher.log',
+    #child_STDOUT => '/dev/null',
+    #child_STDERR => '/dev/null',
 
     #file_umask   => '0666'
 );
@@ -159,7 +159,7 @@ sub index_files {
     my $dbh = shift;
 
     #print "indexer-------->$File::Find::name\n";
-    if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $File::Find::name =~ /\/\..*$|\~.*$/ ) ) {
+    if ( ( -f $File::Find::name ) && ( $File::Find::name =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $File::Find::name =~ /\/\..*$|\~.*$/ ) ) {
 
         #$dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'test', 'test', { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
         $time       = time();
@@ -277,7 +277,7 @@ sub do_it {
                 exit(0);
             }
 
-            if ( ( -f $e->fullname ) && ( $e->fullname =~ /\.(pdf|jpg|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $e->fullname =~ /\/\..*$|\~.*$/ ) ) {
+            if ( ( -f $e->fullname ) && ( $e->fullname =~ /\.(pdf|jpg|heic|jpeg|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) && !( $e->fullname =~ /\/\..*$|\~.*$/ ) ) {
                 $dbh = DBI->connect( 'dbi:mysql:dbname=pStack;host=localhost', 'root', "$sqlPassword", { AutoCommit => 1, RaiseError => 1, PrintError => 0 } );
                 $sth = $dbh->prepare("SET NAMES 'utf8'");
                 $rv  = $sth->execute;
