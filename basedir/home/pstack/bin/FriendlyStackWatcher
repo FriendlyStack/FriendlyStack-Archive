@@ -56,11 +56,11 @@ my $daemon = Proc::Daemon->new(
     setuid   => '0',
     setgid   => '0',
 
-    child_STDOUT => '+>>FriendlyStackWatcher.log',
+    #child_STDOUT => '+>>FriendlyStackWatcher.log',
 
-    child_STDERR => '+>>FriendlyStackWatcher.log',
-    #child_STDOUT => '/dev/null',
-    #child_STDERR => '/dev/null',
+    #child_STDERR => '+>>FriendlyStackWatcher.log',
+    child_STDOUT => '/dev/null',
+    child_STDERR => '/dev/null',
 
     #file_umask   => '0666'
 );

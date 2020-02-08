@@ -44,7 +44,6 @@ sub feedstack {
     my $PDFTOTEXT = "/usr/bin/pdftotext";
     my $CONVERT   = `which convert`;
     chomp $CONVERT;
-    $CONVERT   = "/usr/local/bin/convert";
 
     use Image::ExifTool;
     use Lingua::Identify qw(:language_identification);
