@@ -43,6 +43,7 @@ CREATE TABLE `BackupMedia` (
 
 DROP DATABASE IF EXISTS `geonames`;
 CREATE DATABASE `geonames` DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+use `geonames`;
 DROP TABLE IF EXISTS `geo_01cities500`;
 
 CREATE TABLE `geo_01cities500` (
