@@ -147,3 +147,14 @@ CREATE TABLE `geo_admin2codes` (
 ) ENGINE=MYISAM DEFAULT CHARSET=utf8 COLLATE utf8_unicode_ci;
 
 /*LOAD DATA LOCAL INFILE 'admin2Codes.txt' INTO TABLE `geo_admin2codes` CHARACTER SET 'UTF8';*/
+
+DROP TABLE IF EXISTS `geo_hierarchy`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `geo_hierarchy` (
+  `parentId` int(11) DEFAULT NULL,
+  `childId` int(11) DEFAULT NULL,
+  `type` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  KEY `parentId` (`parentId`),
+  KEY `childId` (`childId`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
