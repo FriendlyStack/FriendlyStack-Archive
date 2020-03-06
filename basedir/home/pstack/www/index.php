@@ -93,6 +93,24 @@ elseif ($request['action'] == 'checkBackupMedia')
 	elseif(file_exists("/tmp/FriendlyStack.backup")) echo "3";
 	else echo "0";
 }
+
+elseif ($request['action'] == 'status')
+{
+exec("sudo /usr/bin/pgrep -F /var/run/pstack.pid",$schrott,$process_status_pstack);
+exec("sudo /usr/bin/pgrep -F /var/run/FriendlyStackWatcher.pid",$schrott,$process_status_FriendlyStackFatcher);
+exec("lpstat -W not-completed all", $jobs);
+if ($process_status_pstack || $process_status_FriendlyStackFatcher) {$bg_color='#ff0000'; $error_message="FriendlyStack service is down, unplug and replug the control unit!";}
+elseif (file_exists("/tmp/FriendlyStack.error")) {$bg_color='#ff0000'; $error_message=file_get_contents('/tmp/FriendlyStack.error');}
+elseif (file_exists("/tmp/FriendlyStack.busy")) {$bg_color='#ffff00'; $error_message=file_get_contents('/tmp/FriendlyStack.busy');}
+elseif (file_exists("/tmp/FriendlyStack.backup")) {$bg_color='#ffff00'; $error_message="Backup in progress...";}
+elseif (file_exists("/tmp/FriendlyStack.gettingPictures")) {$bg_color='#ffff00'; $error_message="Transfering Pictures and Videos...";}
+elseif (!empty($jobs)) {$bg_color='#ffff00'; $error_message="FriendlyStack is processing print queue...";}
+else {$bg_color='#00cc00'; $error_message="Ready";}
+if ($request['action'] == 'status')
+{
+  echo "$bg_color"."|"."$error_message";
+}
+}
 elseif ($request['action'] == 'delete')
 {
 	$query = "SELECT * FROM Documents where ID='".$request['ID']."'";
@@ -350,18 +368,18 @@ div.menu {
 
 <script src=\"jquery.min.js\"></script>
 <script>
-var previous = 0;
+var myArray=[];
 $(document).ready(function() {
 $.ajaxSetup({cache: false}); // fixes older IE caching bug
 setInterval(function(){
 
 $.ajax({
-  url:\"status.php?action=status\",
+  url:\"index.php?action=status\",
   type: 'GET',
   dataType: 'text',
   success : function(data){
-     if (data != previous ) $(\"#status\").attr(\"src\", \"status.php?\"+new Date().getTime());
-  previous = data;
+     myArray = data.split(\"|\");
+     if (myArray[0] != document.getElementById(\"status\").style.background) document.getElementById(\"status\").style.background = myArray[0];
   }
 });
 
@@ -371,7 +389,7 @@ $.ajax({
 
 </head>
 <header id=\"header\" class=\"header header--fixed hide-from-print\" role=\"banner\">
-<iframe id=\"status\" name=\"status\" marginwidth=\"0\" marginheight=\"0\" width=\"20\" height=\"70\" scrolling=\"no\" frameborder=0 src=\"status.php\" align=\"left\">$error_message</iframe><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
+<div id=\"status\" style=\"float:left; width:20; height:70; background-color:#ffff00;\" onclick=\"alert(myArray[1]);\"></div><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
 <input name=\"action\" type=\"hidden\" value=\"find\">
 </form>
 </div>
@@ -420,9 +438,7 @@ window.addEventListener(\"scroll\", function(){
    lastScrollTop = st;
 }, false);
 
-</script>
-<body bgcolor=\"$bg_color\"><br><br><br><br>
-<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"42\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>";
+</script>";
 
 }
 
