@@ -389,11 +389,11 @@ $.ajax({
 
 </head>
 <header id=\"header\" class=\"header header--fixed hide-from-print\" role=\"banner\">
-<div id=\"status\" style=\"float:left; width:20; height:70; background-color:#ffff00;\" onclick=\"alert(myArray[1]);\"></div><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
+<div id=\"status\" style=\"float:left; width:20; height:70;\" onclick=\"alert(myArray[1]);\"></div><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
 <input name=\"action\" type=\"hidden\" value=\"find\">
 </form>
-</div>
 </header>
+</div><div style=\"padding-bottom: 75;\"></div>
 <script src=\"headroom.js\"></script>
 <script>
 (function() {
