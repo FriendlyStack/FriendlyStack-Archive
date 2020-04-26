@@ -218,7 +218,7 @@ openssl genrsa -out /home/pstack/CA/intermediate-ca-key.pem -passout pass:Friend
 ##Generate CSR for intermediate CA
 openssl req -new -extensions v3_req -key /home/pstack/CA/intermediate-ca-key.pem -out /home/pstack/CA/intermediate.csr -sha512 -passin pass:FriendlyStackIntermediate -subj "/C=CH/ST=BS/L=BS/O=FriendlyStack/OU=FriendlyStack/CN=FriendlyStack Intermediate CA" -config /$SCRIPTPATH/openssl.cfg
 ##Generate and sign certificate for Intermediate CA
-openssl x509 -req -extfile /$SCRIPTPATH/openssl.cfg -extensions v3_ca -in /home/pstack/CA/intermediate.csr -CA /home/pstack/CA/ca-root.pem -CAkey /home/pstack/CA/ca-key.pem -CAcreateserial -out /home/pstack/CA/intermediate.crt -days 365 -sha512 -passin pass:FriendlyStack
+openssl x509 -req -extfile /$SCRIPTPATH/openssl.cfg -extensions v3_ca -in /home/pstack/CA/intermediate.csr -CA /home/pstack/CA/ca-root.pem -CAkey /home/pstack/CA/ca-key.pem -CAcreateserial -out /home/pstack/CA/intermediate.crt -days 3650 -sha512 -passin pass:FriendlyStack
 
 ##Generate key for Apache Server
 openssl genrsa -out /etc/apache2/ssl/apache.key 4096
@@ -227,7 +227,7 @@ openssl genrsa -out /etc/apache2/ssl/apache.key 4096
 openssl req -new -extensions v3_req -key /etc/apache2/ssl/apache.key -out /etc/apache2/ssl/apache.csr -sha512 -passin pass:FriendlyStack -subj "/C=CH/ST=BS/L=BS/O=FriendlyStack/OU=FriendlyStack/CN=$CN" -config /$SCRIPTPATH/openssl.cfg
 
 ##Generate and sign certificate for Apache Server
-openssl x509 -req -extfile /$SCRIPTPATH/openssl.cfg -extensions v3_req -in /etc/apache2/ssl/apache.csr -CA /home/pstack/CA/intermediate.crt -CAkey /home/pstack/CA/intermediate-ca-key.pem -CAcreateserial -out /etc/apache2/ssl/apache.crt -days 365 -sha512 -passin pass:FriendlyStackIntermediate
+openssl x509 -req -extfile /$SCRIPTPATH/openssl.cfg -extensions v3_req -in /etc/apache2/ssl/apache.csr -CA /home/pstack/CA/intermediate.crt -CAkey /home/pstack/CA/intermediate-ca-key.pem -CAcreateserial -out /etc/apache2/ssl/apache.crt -days 3650 -sha512 -passin pass:FriendlyStackIntermediate
 
 rm /etc/apache2/ssl/apache.csr
 cp /home/pstack/CA/ca-root.pem /home/pstack/www/FriendlyStack.crt
