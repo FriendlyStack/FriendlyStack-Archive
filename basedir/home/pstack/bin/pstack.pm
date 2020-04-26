@@ -126,7 +126,7 @@ sub feedstack {
 
                     #$scommand = "$PDFTOTEXT -layout -q -nopgbrk -enc UTF-8 " . "\"/tmp/$filename.pdf\" -";
 
-                    $scommand = "/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar ExtractText \"/tmp/$$/$filename.pdf\" -ignoreBeads -sort -console -encoding UTF-8 2>/dev/null";
+                    $scommand = "/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar ExtractText \"/tmp/$$/$filename.pdf\" -ignoreBeads -console -encoding UTF-8 2>/dev/null";
 
                     #$scommand="/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.2.jar ExtractText \"/tmp/$filename.pdf\" -console -encoding UTF-8 -sort";
                     #$scommand = "/usr/bin/gs -dQUIET -dBATCH -dNOPAUSE -sDEVICE=txtwrite -sOutputFile=- \"/tmp/$$/$filename.pdf\"";
@@ -134,7 +134,7 @@ sub feedstack {
                 else {
                     #$scommand = "$PDFTOTEXT -layout -q -nopgbrk -enc UTF-8 " . "\"" . $path . "\" -";
 
-                    $scommand = "/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar ExtractText \"$path\" -ignoreBeads -sort -console -encoding UTF-8 2>/dev/null";
+                    $scommand = "/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.8.jar ExtractText \"$path\" -ignoreBeads -console -encoding UTF-8 2>/dev/null";
 
                     #$scommand="/usr/bin/java -jar /home/pstack/bin/pdfbox-app-2.0.2.jar ExtractText \"$path\" -console -encoding UTF-8 -sort";
                     #$scommand = "/usr/bin/gs -dQUIET -dBATCH -dNOPAUSE -sDEVICE=txtwrite -sOutputFile=- \"$path\"";
