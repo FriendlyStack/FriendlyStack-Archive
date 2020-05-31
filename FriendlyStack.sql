@@ -15,7 +15,7 @@ CREATE TABLE `Documents` (
   `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `path` varchar(500) NOT NULL,
   `relpath` varchar(500) NOT NULL,
-  `content` mediumtext NOT NULL,
+  `content` mediumtext CHARACTER SET utf8mb4 NOT NULL,
   `TS` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `checked` int(11) NOT NULL DEFAULT '1',
   `thumb` mediumblob,

@@ -61,7 +61,7 @@ sub feedstack {
 
     #use DBI;
     #$dbh = DBI->connect('dbi:mysql:dbname=pStack;host=localhost','test','test',{AutoCommit=>1,RaiseError=>1,PrintError=>0});
-    $sth = $dbh->prepare("SET NAMES 'utf8'");
+    $sth = $dbh->prepare("SET NAMES 'utf8mb4'");
     $rv  = $sth->execute;
     $sth = $dbh->prepare("SET low_priority_updates=1");
     $rv  = $sth->execute;
