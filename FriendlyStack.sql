@@ -169,11 +169,11 @@ LOAD DATA LOCAL INFILE 'geonames/cities500'
 INTO TABLE `geo_01cities500`
 CHARACTER SET 'latin1';
 
-LOAD DATA LOCAL INFILE 'geonames/admin1codesascii.txt'
+LOAD DATA LOCAL INFILE 'geonames/admin1CodesASCII.txt'
 INTO TABLE `geo_admin1codesascii`
 CHARACTER SET 'latin1';
 
-LOAD DATA LOCAL INFILE 'geonames/admin2codes.txt'
+LOAD DATA LOCAL INFILE 'geonames/admin2Codes.txt'
 INTO TABLE `geo_admin2codes`
 CHARACTER SET 'latin1';
 
