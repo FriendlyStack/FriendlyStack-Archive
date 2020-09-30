@@ -158,3 +158,37 @@ CREATE TABLE `geo_hierarchy` (
   KEY `parentId` (`parentId`),
   KEY `childId` (`childId`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+ALTER TABLE `geo_01cities500` DISABLE KEYS;
+ALTER TABLE `geo_admin1codesascii` DISABLE KEYS;
+ALTER TABLE `geo_admin2codes` DISABLE KEYS;
+ALTER TABLE `geo_01allCountries` DISABLE KEYS;
+ALTER TABLE `geo_hierarchy` DISABLE KEYS;
+
+LOAD DATA LOCAL INFILE 'geonames\\cities500'
+INTO TABLE `geo_01cities500`
+CHARACTER SET 'UTF8';
+
+LOAD DATA LOCAL INFILE 'geonames\\admin1codesascii.txt'
+INTO TABLE `geo_admin1codesascii`
+CHARACTER SET 'UTF8';
+
+LOAD DATA LOCAL INFILE 'geonames\\admin2codes.txt'
+INTO TABLE `geo_admin2codes`
+CHARACTER SET 'UTF8';
+
+LOAD DATA LOCAL INFILE 'geonames\\allCountries'
+INTO TABLE `geo_01allCountries`
+CHARACTER SET 'UTF8';
+
+LOAD DATA LOCAL INFILE 'geonames\\hierarchy'
+INTO TABLE `geo_hierarchy`
+CHARACTER SET 'UTF8';
+
+
+
+ALTER TABLE `geo_02cities500` ENABLE KEYS;
+ALTER TABLE `geo_admin1codesascii` ENABLE KEYS;
+ALTER TABLE `geo_admin2codes` ENABLE KEYS;
+ALTER TABLE `geo_01allCountries` ENABLE KEYS;
+ALTER TABLE `geo_hierarchy` ENABLE KEYSadmin1codesascii.txt

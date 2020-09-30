@@ -125,6 +125,8 @@ printf "\nCreate Database Schema"
 stty -echo
 printf "\nPlease enter MySQL Administrator Password: "
 stty echo
+
+gunzip -S .zip /$SCRIPTPATH/geonames/*.zip
 /usr/bin/mysql --batch -u root -p$SQLPASSWORD < /$SCRIPTPATH/FriendlyStack.sql 2>/dev/null
 
 printf "\nCreating Directory Structure"
