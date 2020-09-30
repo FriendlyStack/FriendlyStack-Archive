@@ -165,27 +165,25 @@ ALTER TABLE `geo_admin2codes` DISABLE KEYS;
 ALTER TABLE `geo_01allCountries` DISABLE KEYS;
 ALTER TABLE `geo_hierarchy` DISABLE KEYS;
 
-LOAD DATA LOCAL INFILE 'geonames\\cities500'
+LOAD DATA LOCAL INFILE 'geonames/cities500'
 INTO TABLE `geo_01cities500`
-CHARACTER SET 'UTF8';
+CHARACTER SET 'latin1';
 
-LOAD DATA LOCAL INFILE 'geonames\\admin1codesascii.txt'
+LOAD DATA LOCAL INFILE 'geonames/admin1codesascii.txt'
 INTO TABLE `geo_admin1codesascii`
-CHARACTER SET 'UTF8';
+CHARACTER SET 'latin1';
 
-LOAD DATA LOCAL INFILE 'geonames\\admin2codes.txt'
+LOAD DATA LOCAL INFILE 'geonames/admin2codes.txt'
 INTO TABLE `geo_admin2codes`
-CHARACTER SET 'UTF8';
+CHARACTER SET 'latin1';
 
-LOAD DATA LOCAL INFILE 'geonames\\allCountries'
+LOAD DATA LOCAL INFILE 'geonames/allCountries'
 INTO TABLE `geo_01allCountries`
-CHARACTER SET 'UTF8';
+CHARACTER SET 'latin1';
 
-LOAD DATA LOCAL INFILE 'geonames\\hierarchy'
+LOAD DATA LOCAL INFILE 'geonames/hierarchy'
 INTO TABLE `geo_hierarchy`
-CHARACTER SET 'UTF8';
-
-
+CHARACTER SET 'latin1';
 
 ALTER TABLE `geo_02cities500` ENABLE KEYS;
 ALTER TABLE `geo_admin1codesascii` ENABLE KEYS;
