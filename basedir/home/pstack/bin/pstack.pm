@@ -264,12 +264,27 @@ JOIN geonames.geo_01allCountries d ON c.geonameid = d.geonameid
 JOIN geonames.geo_01allCountries e ON b.geonameid = e.geonameid
 JOIN geonames.geo_hierarchy f on e.geonameid = f.childId and f.type='ADM'
 JOIN geonames.geo_01allCountries g ON f.parentId = g.geonameid
-JOIN geonames.geo_hierarchy h on g.geonameid = h.childId and h.type='ADM'
+JOIN geonames.geo_hierarchy h on g.geonameid = h.childId and f.type='ADM'
 JOIN geonames.geo_01allCountries i ON h.parentId = i.geonameid
-WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 1;");
+WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 5;");
+                #$sth = $dbh->prepare("SELECT a.asciiname, d.asciiname as admin2,e.asciiname as admin1,g.asciiname as coutry,i.asciiname as continent,  3956 * 2 * ASIN(SQRT(  POWER(SIN(($latitude - a.latitude) * pi()/180 / 2), 2) +  COS($latitude * pi()/180) *  COS(a.latitude * pi()/180) *  POWER(SIN(($longitude -a.longitude) * pi()/180 / 2), 2)  )) as distance
+#FROM  geonames.geo_01allCountries a
+#JOIN geonames.geo_admin1codesascii b ON b.code=CONCAT(a.country,\".\",a.admin1)
+#JOIN geonames.geo_admin2codes c ON c.code=CONCAT(a.country,\".\",a.admin1,\".\",a.admin2)
+#JOIN geonames.geo_01allCountries d ON c.geonameid = d.geonameid
+#JOIN geonames.geo_01allCountries e ON b.geonameid = e.geonameid
+#JOIN geonames.geo_hierarchy f on e.geonameid = f.childId and f.type='ADM'
+#JOIN geonames.geo_01allCountries g ON f.parentId = g.geonameid
+#JOIN geonames.geo_hierarchy h on g.geonameid = h.childId and h.type='ADM'
+#JOIN geonames.geo_01allCountries i ON h.parentId = i.geonameid
+#WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 1;");
                 $rv  = $sth->execute;
                 $row = $sth->fetchrow_hashref();
-                $content = "$row->{'asciiname'} $row->{'admin2'} $row->{'admin1'} $row->{'coutry'} $row->{'continent'}";
+                $content = "<title>$row->{'asciiname'}, $row->{'admin2'}, $row->{'admin1'}, $row->{'coutry'}, $row->{'continent'}</title>\n";
+                while ($row = $sth->fetchrow_hashref()) {
+                $content .= "<info>$row->{'asciiname'}, $row->{'admin2'}, $row->{'admin1'}, $row->{'coutry'}, $row->{'continent'}</info>\n";
+                }
+                #$content = "$row->{'asciiname'} $row->{'admin2'} $row->{'admin1'} $row->{'coutry'} $row->{'continent'}";
                 #$content = "$$info{'GPSLatitude'},$$info{'GPSLongitude'}";
                 if    ( $$info{'CreateDate'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ )       { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
                 elsif ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
