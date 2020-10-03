@@ -1,8 +1,8 @@
 package pstack;
 
-
 ##FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
-##Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+##Copyright (C) 2018,2019  Dimitrios F. Kallivroussis, Friendly River LLC
+##              2020  Dimitrios F. Kallivroussis
 ##
 ##This program is free software: you can redistribute it and/or modify
 ##it under the terms of the GNU Affero General Public License as
@@ -17,7 +17,6 @@ package pstack;
 ##You should have received a copy of the GNU Affero General Public License
 ##along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 use Exporter;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
@@ -26,6 +25,8 @@ $VERSION     = 1.00;
 @EXPORT      = ();
 @EXPORT_OK   = qw(feedstack);
 %EXPORT_TAGS = ( DEFAULT => [qw(&feedstack)] );
+
+use JSON;
 
 sub feedstack {
     my ( $dbh, $file, $ocr ) = @_;
@@ -55,7 +56,7 @@ sub feedstack {
     Lingua::Identify::activate_language('fr');
     %filters = ( "doc", "writer_pdf_Export", "docx", "writer_pdf_Export", "xls", "calc_pdf_Export", "xlsx", "calc_pdf_Export", "ppt", "impress_pdf_Export", "pptx", "impress_pdf_Export", "vsd", "draw_pdf_Export", "vsdx", "draw_pdf_Export", "vdx", "draw_pdf_Export" );
     %Months = ( "Januar", 1, "Februar", 2, "März", 3, "April", 4, "Mai", 5, "Juni", 6, "Juli", 7, "August", 8, "September", 9, "Oktober", 10, "November", 11, "Dezember", 12, "January", 1, "February", 2, "March", 3, "April", 4, "May", 5, "June", 6, "July", 7, "August", 8, "September", 9, "October", 10, "November", 11, "December", 12, "JAN", 1, "FEB", 2, "MAR", 3, "APR", 4, "MAY", 5, "JUN", 6, "JUL", 7, "AUG", 8, "SEP", 9, "OCT", 10, "NOV", 11, "DEC", 12 );
-    %birthdays = ( );
+    %birthdays = ();
     my $media;
     use File::Path qw(make_path remove_tree);
 
@@ -72,13 +73,17 @@ sub feedstack {
     $exifTool = new Image::ExifTool;
 
     #if ((-f $file) && ($file =~ /\.(pdf|jpg|jpeg|r[a]?w2|avi|mp4|mts|mov)$/i) && !(-f "/home/videos/".basename($file).".mp4"))
-    if ( ( -f $file ) && ( $file =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?)$|xls[x]?|ppt[x]?|vsd[x]?|vdx/i ) ) {
+    if (   ( -f $file )
+        && ( $file =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc[x]?)$|xls[x]?|ppt[x]?|vsd[x]?|vdx/i ) )
+    {
         $path = $file;
         $quotedpath = $dbh->quote( decode( 'utf-8', $path ) );
 
         #$quotedpath = $dbh->quote( $path );
         $language = "N/A";
-        if ( $file =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) { $extension = $1 }
+        if ( $file =~ /\.(pdf|jpg|jpeg|heic|r[a]?w2|png|bmp|avi|mp4|mts|mov|doc|doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx)$/i ) {
+            $extension = $1;
+        }
         @mdate = CORE::localtime( stat($file)->mtime );
         $ts    = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $mdate[5] + 1900, $mdate[4] + 1, $mdate[3], $mdate[2], $mdate[1], $mdate[0] );
         $sth   = $dbh->prepare("select ID from Documents where path=$quotedpath and timestamp(ts)=timestamp($ts)");
@@ -184,8 +189,20 @@ sub feedstack {
                         }
 
                         #if ((!exists($birthdays{$ContentDate})) && (exists($Months{$1}) || (12>=$5 && $5>=1)) && ((31>=$2 && $2>=1) || (31>=$4 && $4>=1))){last} else {$ContentDate="NULL"}
-                        if   ( ( !exists( $birthdays{$ContentDate} ) ) && ( ( exists( $Months{$1} ) && ( 31 >= $2 && $2 >= 1 ) ) || ( ( 31 >= $4 && $4 >= 1 ) && ( 12 >= $5 && $5 >= 1 ) ) || ( ( 31 >= $5 && $5 >= 1 ) && ( 12 >= $4 && $4 >= 1 ) ) ) ) { last }
-                        else                                                                                                                                                                                                                             { $ContentDate = "NULL" }
+                        if (
+                            ( !exists( $birthdays{$ContentDate} ) )
+                            && (
+                                ( exists( $Months{$1} ) && ( 31 >= $2 && $2 >= 1 ) )
+                                || (   ( 31 >= $4 && $4 >= 1 )
+                                    && ( 12 >= $5 && $5 >= 1 ) )
+                                || (   ( 31 >= $5 && $5 >= 1 )
+                                    && ( 12 >= $4 && $4 >= 1 ) )
+                            )
+                          )
+                        {
+                            last;
+                        }
+                        else { $ContentDate = "NULL" }
                     }
                     if ( $ContentDate eq "NULL" ) {
 
@@ -199,7 +216,9 @@ sub feedstack {
 
                     #print "$ContentDate\n";
                 }
-                if ( ( ( $ContentDate eq "NULL" ) && ( $language =~ /en/i ) ) || !( $language =~ /en/i ) ) {
+                if ( ( ( $ContentDate eq "NULL" ) && ( $language =~ /en/i ) )
+                    || !( $language =~ /en/i ) )
+                {
                     while ( $content =~ /(\d{1,2})\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|January|February|March|April|May|June|July|Augut|September|October|November|December)\s+(\d{4}|\d{2})(?!\d)|(?<!\d)(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{4}|\d{2})(?!\d)/gs ) {
                         $yearpadding = 0;
                         if ( exists( $Months{$2} ) ) {
@@ -216,8 +235,17 @@ sub feedstack {
                             }
                             $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $6 + $yearpadding, $5, $4, 0, 0, 0 );
                         }
-                        if   ( ( !exists( $birthdays{$ContentDate} ) ) && ( exists( $Months{$2} ) || ( 12 >= $5 && $5 >= 1 ) ) && ( ( 31 >= $1 && $1 >= 1 ) || ( 31 >= $4 && $4 >= 1 ) ) ) { last }
-                        else                                                                                                                                                               { $ContentDate = "NULL" }
+                        if (
+                            ( !exists( $birthdays{$ContentDate} ) )
+                            && ( exists( $Months{$2} )
+                                || ( 12 >= $5 && $5 >= 1 ) )
+                            && (   ( 31 >= $1 && $1 >= 1 )
+                                || ( 31 >= $4 && $4 >= 1 ) )
+                          )
+                        {
+                            last;
+                        }
+                        else { $ContentDate = "NULL" }
                     }
                     if ( $ContentDate eq "NULL" ) {
                         while ( $content =~ /(?<!\d[\.-]\s)(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+(\d{4}|\d{2})\D+/gs ) {
@@ -230,8 +258,12 @@ sub feedstack {
                             }
 
                             #print "$& \t $ContentDate \t $path\n";
-                            if   ( ( !exists( $birthdays{$ContentDate} ) ) && ( exists( $Months{$1} ) ) ) { last }
-                            else                                                                          { $ContentDate = "NULL" }
+                            if (   ( !exists( $birthdays{$ContentDate} ) )
+                                && ( exists( $Months{$1} ) ) )
+                            {
+                                last;
+                            }
+                            else { $ContentDate = "NULL" }
                         }
                     }
                 }
@@ -245,18 +277,25 @@ sub feedstack {
                 #if ($ocr==1) {$scommand="/usr/local/bin/abbyyocr11 -ido --detectInvertedImage --detectTextOnPictures --enableAggressiveTextExtraction -recc -rldm yes -rl German English French --outputToStdout -if "."\"".$path."\""; $content=decode('utf-8',`$scommand`); $language=langof($content);} else {$content="NULL"}
                 #if ( $ocr == 1 ) { $scommand = "/usr/local/bin/abbyyocr11 -ido --detectTextOnPictures --enableAggressiveTextExtraction -recc -rldm yes -rl German English French --outputToStdout -if " . "\"" . $path . "\""; $content = decode( 'utf-8', `$scommand` ); $language = langof($content); }
                 #if ( $ocr == 1 ) { $scommand = "/usr/bin/tesseract " . "\"" . $path . "\" stdout"; $content = decode( 'utf-8', `$scommand` ); $language = langof($content); }
-                if ( $ocr == 1 ) { $scommand = "/home/pstack/bin/FriendlyStackOCR " . "\"" . $path . "\" -"; $content = decode( 'utf-8', `$scommand` ); $language = langof($content); print "$content\n"; }
-                else             { $content = "NULLi" }
+                if ( $ocr == 1 ) {
+                    $scommand = "/home/pstack/bin/FriendlyStackOCR " . "\"" . $path . "\" -";
+                    $content  = decode( 'utf-8', `$scommand` );
+                    $language = langof($content);
+                    print "$content\n";
+                }
+                else { $content = "NULLi" }
 
                 #if ($ocr==1) {$scommand="/usr/local/bin/abbyyocr11 -ido --detectTextOnPictures --enableAggressiveTextExtraction -recc -rldm yes -rl German English French --outputToStdout -if "."\"".$path."\""; $content=`$scommand`; $language=langof($content);} else {$content="NULL"}
                 $info = $exifTool->ImageInfo($path);
+
                 #46 deg 24' 37.95"
-                $$info{'GPSLatitude'} =~ /(\d{1,2}) deg (\d{1,2})\' (\d{1,2}\.\d{1,2})\"/;
-                my $latitude = $1 + ($2/60) + ($3/(60*60));
-                $$info{'GPSLongitude'} =~ /(\d{1,2}) deg (\d{1,2})\' (\d{1,2}\.\d{1,2})\"/;
-                my $longitude = $1 + ($2/60) + ($3/(60*60));
-                my $dist=1;
-                $sth = $dbh->prepare("SELECT a.asciiname, d.asciiname as admin2,e.asciiname as admin1,g.asciiname as coutry,i.asciiname as continent,  3956 * 2 * ASIN(SQRT(  POWER(SIN(($latitude - a.latitude) * pi()/180 / 2), 2) +  COS($latitude * pi()/180) *  COS(a.latitude * pi()/180) *  POWER(SIN(($longitude -a.longitude) * pi()/180 / 2), 2)  )) as distance
+                if ( $$info{'GPSLatitude'} =~ /(\d{1,2}) deg (\d{1,2})\' (\d{1,2}\.\d{1,2})\"/ ) {
+                    my $latitude = $1 + ( $2 / 60 ) + ( $3 / ( 60 * 60 ) );
+                    $$info{'GPSLongitude'} =~ /(\d{1,2}) deg (\d{1,2})\' (\d{1,2}\.\d{1,2})\"/;
+                    my $longitude = $1 + ( $2 / 60 ) + ( $3 / ( 60 * 60 ) );
+                    my $dist = 1;
+                    $sth = $dbh->prepare(
+                        "SELECT a.asciiname, d.asciiname as admin2,e.asciiname as admin1,g.asciiname as coutry,i.asciiname as continent,  3956 * 2 * ASIN(SQRT(  POWER(SIN(($latitude - a.latitude) * pi()/180 / 2), 2) +  COS($latitude * pi()/180) *  COS(a.latitude * pi()/180) *  POWER(SIN(($longitude -a.longitude) * pi()/180 / 2), 2)  )) as distance
 FROM  geonames.geo_01allCountries a
 JOIN geonames.geo_admin1codesascii b ON b.code=CONCAT(a.country,\".\",a.admin1)
 JOIN geonames.geo_admin2codes c ON c.code=CONCAT(a.country,\".\",a.admin1,\".\",a.admin2)
@@ -265,31 +304,39 @@ JOIN geonames.geo_01allCountries e ON b.geonameid = e.geonameid
 JOIN geonames.geo_hierarchy f on e.geonameid = f.childId and f.type='ADM'
 JOIN geonames.geo_01allCountries g ON f.parentId = g.geonameid
 JOIN geonames.geo_hierarchy h on g.geonameid = h.childId and f.type='ADM'
-JOIN geonames.geo_01allCountries i ON h.parentId = i.geonameid
-WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 5;");
-                #$sth = $dbh->prepare("SELECT a.asciiname, d.asciiname as admin2,e.asciiname as admin1,g.asciiname as coutry,i.asciiname as continent,  3956 * 2 * ASIN(SQRT(  POWER(SIN(($latitude - a.latitude) * pi()/180 / 2), 2) +  COS($latitude * pi()/180) *  COS(a.latitude * pi()/180) *  POWER(SIN(($longitude -a.longitude) * pi()/180 / 2), 2)  )) as distance
-#FROM  geonames.geo_01allCountries a
-#JOIN geonames.geo_admin1codesascii b ON b.code=CONCAT(a.country,\".\",a.admin1)
-#JOIN geonames.geo_admin2codes c ON c.code=CONCAT(a.country,\".\",a.admin1,\".\",a.admin2)
-#JOIN geonames.geo_01allCountries d ON c.geonameid = d.geonameid
-#JOIN geonames.geo_01allCountries e ON b.geonameid = e.geonameid
-#JOIN geonames.geo_hierarchy f on e.geonameid = f.childId and f.type='ADM'
-#JOIN geonames.geo_01allCountries g ON f.parentId = g.geonameid
-#JOIN geonames.geo_hierarchy h on g.geonameid = h.childId and h.type='ADM'
-#JOIN geonames.geo_01allCountries i ON h.parentId = i.geonameid
-#WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 1;");
-                $rv  = $sth->execute;
-                $row = $sth->fetchrow_hashref();
-                $content = "<title>$row->{'asciiname'}, $row->{'admin2'}, $row->{'admin1'}, $row->{'coutry'}, $row->{'continent'}</title>\n";
-                while ($row = $sth->fetchrow_hashref()) {
-                $content .= "<info>$row->{'asciiname'}, $row->{'admin2'}, $row->{'admin1'}, $row->{'coutry'}, $row->{'continent'}</info>\n";
+JOIN geonames.geo_01allCountries i ON h.parentId = i.geonameid and i.fcode='CONT'
+WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $longitude+$dist/abs(cos(radians($latitude))*69) and a.latitude between $latitude-($dist/69) and $latitude+($dist/69) ORDER BY distance ASC LIMIT 5;"
+                    );
+                    $rv = $sth->execute;
+                    if ( -f "/home/pstack/bin/googleAPI.key" ) {
+                        open( FILE, "<", "/home/pstack/bin/googleAPI.key" )
+                          || die "could not open /home/pstack/bin/googleAPI.key\n";
+                        my $key = <FILE>;
+                        close(FILE);
+                        $json = `wget -q -O- "https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$key"`;
+                        my $text = decode_json($json);
+                        $content = "<title>$$text{'results'}[0]{'formatted_address'}</title>";
+                    }
+                    if ( $row = $sth->fetchrow_hashref() ) {
+                        if   ( $content =~ /<title>/ ) { $tag = "info"; }
+                        else                          { $tag = "title"; }
+                        $content .= "<$tag>$row->{'asciiname'}, $row->{'admin2'}, $row->{'admin1'}, $row->{'coutry'}, $row->{'continent'}</$tag>\n";
+                        while ( $row = $sth->fetchrow_hashref() ) {
+                            $content .= "<info>$row->{'asciiname'}, $row->{'admin2'}, $row->{'admin1'}, $row->{'coutry'}, $row->{'continent'}</info>\n";
+                        }
+                    }
+                    $content .= "<coordinates>$latitude,$longitude</coordinates>\n";
                 }
-                #$content = "$row->{'asciiname'} $row->{'admin2'} $row->{'admin1'} $row->{'coutry'} $row->{'continent'}";
-                #$content = "$$info{'GPSLatitude'},$$info{'GPSLongitude'}";
-                if    ( $$info{'CreateDate'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ )       { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                elsif ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                elsif ( basename($path) =~ /^(\d{4})\-(\d{2})\-(\d{2})\s(\d{2})\-(\d{2})\-(\d{2}).*/ )         { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                else                                                                                           { $ContentDate = $ts }
+                if ( $$info{'CreateDate'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                elsif ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                elsif ( basename($path) =~ /^(\d{4})\-(\d{2})\-(\d{2})\s(\d{2})\-(\d{2})\-(\d{2}).*/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                else { $ContentDate = $ts }
 
             }
             elsif ( $extension =~ /r[a]?w2/i ) {
@@ -297,8 +344,10 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
 
                 #$basepath = "/home/pstack/Multimedia";
                 $info = $exifTool->ImageInfo($path);
-                if ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                else                                                                                        { $ContentDate = $ts }
+                if ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                else { $ContentDate = $ts }
             }
             elsif ( $extension =~ /(avi|mp4|mts|mov)/i ) {
                 $media = "Video";
@@ -306,10 +355,16 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
                 #$basepath = "/home/pstack/Multimedia";
                 $content = "NULL";
                 $info    = $exifTool->ImageInfo($path);
-                if    ( $$info{'CreateDate'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ )       { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                elsif ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                elsif ( basename($path) =~ /^(\d{4})\-(\d{2})\-(\d{2})\s(\d{2})\-(\d{2})\-(\d{2}).*/ )         { $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 ); }
-                else                                                                                           { $ContentDate = $ts }
+                if ( $$info{'CreateDate'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                elsif ( $$info{'DateTimeOriginal'} =~ /(\d{4})\:(\d{2})\:(\d{2})\s(\d{2})\:(\d{2})\:(\d{2})/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                elsif ( basename($path) =~ /^(\d{4})\-(\d{2})\-(\d{2})\s(\d{2})\-(\d{2})\-(\d{2}).*/ ) {
+                    $ContentDate = sprintf( "'%4d-%02d-%02d %02d:%02d:%02d'", $1, $2, $3, $4, $5, $6 );
+                }
+                else { $ContentDate = $ts }
 
                 #$moviepath = "/home/pstack/Transcoded_Videos/" . basename($path) . ".mp4";
 
@@ -340,6 +395,7 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
             $sth = $dbh->prepare("SELECT LAST_INSERT_ID() as `ID` FROM `Documents`");
             $rv  = $sth->execute;
             $row = $sth->fetchrow_hashref();
+
             if ( $extension =~ /doc[x]?|xls[x]?|ppt[x]?|vsd[x]?|vdx/i ) {
                 $scommand = "$CONVERT -density 100 \"/tmp/$$/$filename.pdf\"[0] -resize 720 -flatten -background white -type Grayscale -depth 4 -define png:color-type=0 -define -dither none /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null";
 
@@ -347,7 +403,8 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
                 system("$scommand");
 
                 unlink("/tmp/$$/$filename.pdf");
-		#rmdir("/tmp/$$");
+
+                #rmdir("/tmp/$$");
                 remove_tree("/tmp/$$");
             }
             elsif ( $extension =~ /pdf/i ) {
@@ -358,6 +415,7 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
                 system("$scommand");
             }
             elsif ( $extension =~ /jp[e]?g|png|heic|bmp/i ) {
+
                 #$scommand = "$CONVERT \"$path\" -auto-orient -resize 180 -bordercolor snow -background black +polaroid /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null";
                 $scommand = "$CONVERT \"$path\" -resize 180 /home/pstack/Previews/$row->{'ID'}.png";
                 print "$scommand\n";
@@ -375,8 +433,8 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
                 #$scommand = "nice --adjustment=10 /usr/bin/avconv -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -crf 19 -y -filter:v scale=\"trunc(oh*a/2)*2:240\" -f mp4 \"$moviepath\"";
                 #$scommand = "nice --adjustment=10 /usr/bin/avconv -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -crf 19 -y -filter:v scale=\"trunc(oh*a/2)*2:320\" -f mp4 \"$moviepath\" -filter:v scale=\"trunc(oh*a/2)*2:720\" -f mp4 -strict -2 \"$moviepath.mp4\"";
                 #$scommand = "nice --adjustment=10 /usr/bin/ffmpeg -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -y -filter:v scale=\"trunc(oh*a/2)*2:240\" -movflags +faststart -f mp4 \"$moviepath\" -threads 0 -filter:v scale=\"trunc(oh*a/2)*2:720\" -pix_fmt yuv420p -y -strict -2 -movflags +faststart -f mp4 \"$moviepath.mp4\"";
-		#$scommand = "nice --adjustment=30 /usr/bin/ffmpeg -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -y -filter:v scale=\"trunc(oh*a/2)*2:240\" -movflags +faststart -f mp4 \"$moviepath\" -threads 0 -filter:v scale=\"trunc(oh*a/2)*2:720\" -pix_fmt yuv420p -y -strict -2 -movflags +faststart -f mp4 \"$moviepath.mp4\"";
-		$scommand = "nice --adjustment=30 ffmpeg -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -y -filter:v scale=\"trunc(oh*a/2)*2:240\" -movflags +faststart -f mp4 \"$moviepath\" -threads 0 -filter:v scale=\"trunc(oh*a/2)*2:720\" -pix_fmt yuv420p -y -strict -2 -movflags +faststart -f mp4 \"$moviepath.mp4\"";
+                #$scommand = "nice --adjustment=30 /usr/bin/ffmpeg -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -y -filter:v scale=\"trunc(oh*a/2)*2:240\" -movflags +faststart -f mp4 \"$moviepath\" -threads 0 -filter:v scale=\"trunc(oh*a/2)*2:720\" -pix_fmt yuv420p -y -strict -2 -movflags +faststart -f mp4 \"$moviepath.mp4\"";
+                $scommand = "nice --adjustment=30 ffmpeg -threads 0 -v 0 -i \"" . $path . "\" -threads 0 -acodec aac -strict -2 -vcodec libx264 -pix_fmt yuv420p -y -filter:v scale=\"trunc(oh*a/2)*2:240\" -movflags +faststart -f mp4 \"$moviepath\" -threads 0 -filter:v scale=\"trunc(oh*a/2)*2:720\" -pix_fmt yuv420p -y -strict -2 -movflags +faststart -f mp4 \"$moviepath.mp4\"";
                 system("$scommand");
                 chown( $uid, $gid, "$moviepath" );
                 chmod( 0660, "$moviepath" );
@@ -384,8 +442,8 @@ WHERE a.longitude between $longitude-$dist/abs(cos(radians($latitude))*69) and $
                 #$scommand = "/usr/bin/avconv -v 0 -i \"$moviepath\" -vframes 1 -an -ss 0.1 -filter:v scale=\"trunc(oh*a/2)*2:240\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null";
                 #$scommand = "/usr/bin/avconv -v 0 -i \"$moviepath\" -vframes 1 -an -ss 0.1 -filter:v scale=\"trunc(oh*a/2)*2:240\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null && composite -dissolve 35% -gravity southeast ic_hd_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png";
                 #$scommand = "/usr/bin/avconv -v 0 -i \"$moviepath\" -vframes 1 -an -ss 0.1 -filter:v scale=\"320:trunc(ow/a/2)*2\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null && composite -dissolve 35% -gravity southeast ic_hd_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png";
-		#$scommand = "/usr/bin/avconv -v 0 -i \"$path\" -vframes 1 -an -ss 0.1 -filter:v scale=\"-2:320\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null && composite -dissolve 35% -gravity southeast ic_hd_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png && composite -dissolve 45% -gravity center ic_play_circle_outline_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png";
-		$scommand = "ffmpeg -v 0 -i \"$path\" -vframes 1 -an -ss 0.1 -filter:v scale=\"-1:320\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null && composite -dissolve 35% -gravity southeast ic_hd_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png && composite -dissolve 45% -gravity center ic_play_circle_outline_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png";
+                #$scommand = "/usr/bin/avconv -v 0 -i \"$path\" -vframes 1 -an -ss 0.1 -filter:v scale=\"-2:320\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null && composite -dissolve 35% -gravity southeast ic_hd_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png && composite -dissolve 45% -gravity center ic_play_circle_outline_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png";
+                $scommand = "ffmpeg -v 0 -i \"$path\" -vframes 1 -an -ss 0.1 -filter:v scale=\"-1:320\" -f image2 /home/pstack/Previews/$row->{'ID'}.png 2>/dev/null && composite -dissolve 35% -gravity southeast ic_hd_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png && composite -dissolve 45% -gravity center ic_play_circle_outline_white_24dp_2x.png /home/pstack/Previews/$row->{'ID'}.png /home/pstack/Previews/$row->{'ID'}.png";
                 system("$scommand");
             }
             chown( $uid, $gid, "/home/pstack/Previews/$row->{'ID'}.png" );

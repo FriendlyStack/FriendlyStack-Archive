@@ -91,7 +91,7 @@ cp -r /$SCRIPTPATH/packages /tmp/packages
 echo "deb file:/tmp/packages ./" > /etc/apt/sources.list.d/friendlystack.list
 apt-get -y update
 tasksel install lamp-server samba-server standard openssh-server
-apt-get -y --allow-unauthenticated install cups wpasupplicant sane-utils php-fpdf php-xml libimage-exiftool-perl liblingua-identify-perl libclass-dbi-perl libproc-daemon-perl zbar-tools libtiff-tools imagemagick graphicsmagick libav-tools libreoffice ntfs-3g libgphoto2 gphoto2 libdbd-mysql-perl libpdf-api2-perl wireless-tools tesseract leptonica libopenjp2-7 libimobiledevice ifuse libusbmuxd usbmuxd libplist3 jmtpfs convmv liblinux-inotify2-perl apt-offline ifuse cryptsetup libgraphicsmagick++-q16 libsigc++ libgraphicsmagick++-q16-12 libexpect-perl libio-pty-perl libio-stty-perl libconfig-general-perl smartmontools cryptsetup-bin libcld2-0 libapache2-mod-php php-mysql libde265 libheif
+apt-get -y --allow-unauthenticated install cups wpasupplicant sane-utils php-fpdf php-xml libimage-exiftool-perl liblingua-identify-perl libclass-dbi-perl libproc-daemon-perl zbar-tools libtiff-tools imagemagick graphicsmagick libav-tools libreoffice ntfs-3g libgphoto2 gphoto2 libdbd-mysql-perl libpdf-api2-perl wireless-tools tesseract leptonica libopenjp2-7 libimobiledevice ifuse libusbmuxd usbmuxd libplist3 jmtpfs convmv liblinux-inotify2-perl apt-offline ifuse cryptsetup libgraphicsmagick++-q16 libsigc++ libgraphicsmagick++-q16-12 libexpect-perl libio-pty-perl libio-stty-perl libconfig-general-perl smartmontools cryptsetup-bin libcld2-0 libapache2-mod-php php-mysql libde265 libheif libjson-perl
 rm /etc/apt/sources.list.d/friendlystack.list
 rm -rf /tmp/packages
 fi
@@ -126,7 +126,10 @@ stty -echo
 printf "\nPlease enter MySQL Administrator Password: "
 stty echo
 
+if [ -f /home/FriendlyStack.autoinstall ]
+then
 wget -P geonames https://download.geonames.org/export/dump/allCountries.zip
+fi
 gunzip -S .zip /$SCRIPTPATH/geonames/*.zip
 /usr/bin/mysql --batch -u root -p$SQLPASSWORD < /$SCRIPTPATH/FriendlyStack.sql 2>/dev/null
 

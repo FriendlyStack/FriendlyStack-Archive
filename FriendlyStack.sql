@@ -189,4 +189,4 @@ ALTER TABLE `geo_02cities500` ENABLE KEYS;
 ALTER TABLE `geo_admin1codesascii` ENABLE KEYS;
 ALTER TABLE `geo_admin2codes` ENABLE KEYS;
 ALTER TABLE `geo_01allCountries` ENABLE KEYS;
-ALTER TABLE `geo_hierarchy` ENABLE KEYSadmin1codesascii.txt
+ALTER TABLE `geo_hierarchy` ENABLE KEYS;

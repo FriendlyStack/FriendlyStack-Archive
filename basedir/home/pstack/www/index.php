@@ -2,7 +2,8 @@
 
 
 //FriendlyStack, a system for managing physical and electronic documents as well as photos and videos
-//Copyright (C) 2018  Dimitrios F. Kallivroussis, Friendly River LLC
+//Copyright (C) 2018,2019  Dimitrios F. Kallivroussis, Friendly River LLC
+//                   2020  Dimitrios F. Kallivroussis
 //
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU Affero General Public License as
@@ -29,7 +30,7 @@
 
 @ini_set('default_charset', 'UTF-8');
 
-//This is required because of a bug in pathinfo() resp. basename() that causes filename starting with non ascii characters to be corrupted
+//This is required because of a bug in pathinfo() resp. basename() that causes filenames starting with non ascii characters to be corrupted
 setlocale(LC_ALL,'en_US.UTF-8');
 $sqlPassword = rtrim(file_get_contents('/home/pstack/bin/mysql.pwd',1),"\n");
 if(file_exists("/tmp/restore")) {
@@ -284,7 +285,8 @@ div.polaroido {
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
   margin-bottom: 0px;
   margin-top: 0px;
-overflow:auto;
+  overflow:hidden;
+  word-break: break-all;
 }
 
 div.polaroid {
@@ -295,7 +297,8 @@ div.polaroid {
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
   margin-bottom: 20px;
   margin-top: 20px;
-overflow:auto;
+  overflow:hidden;
+  word-break: break-all;
 }
 
 
@@ -308,7 +311,8 @@ overflow:auto;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     margin-bottom: 20px;
     margin-top: 20px;
-  overflow:auto;
+    overflow:hidden;
+  word-break: break-all;
   }
   div.polaroido {
     width:80%;
@@ -318,7 +322,8 @@ overflow:auto;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     margin-bottom: 20px;
     margin-top: 20px;
-  overflow:auto;
+    overflow:hidden;
+  word-break: break-all;
   }
 }
 
@@ -331,7 +336,8 @@ overflow:auto;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     margin-bottom: 20px;
     margin-top: 20px;
-  overflow:auto;
+    overflow:hidden;
+  word-break: break-all;
   }
   div.polaroido {
     width:92%;
@@ -341,7 +347,8 @@ overflow:auto;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     margin-bottom: 20px;
     margin-top: 20px;
-  overflow:auto;
+    overflow:hidden;
+  word-break: break-all;
   }
 }
 
@@ -363,6 +370,10 @@ div.container {
 }
 div.menu {
   padding: 14px 0px;
+}
+span.label {
+  color:#73ab73;
+  font-weight: bold;
 }
 </style>
 
@@ -584,7 +595,10 @@ function list_results($result,$web_query)
 			{
 			echo '<div class="polaroid"><img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'" style="clear: left;"></a><div class="container">'.$row['relpath'].'</div></div><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
 			} elseif ($row['Media'] == "Picture") {
-			echo '<img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'"></a><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
+                        preg_match('@(/home/pstack/)(.+)@',$row['path'],$matchPath);
+                        preg_match('@(<title>)(.+)(</title>)@',$row['content'],$matchContent);
+			echo '<div class="polaroido"><img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'" style="clear: left;"></a><div class="container"><span class="label">Date: </span>'.$row['ContentDate'].'<br><span class="label">Location: </span>'.$matchContent[2].'<br><span class="label">Path: </span>'.$matchPath[2].'</div></div><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
+			//echo '<img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'"></a><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
 			} else {
 			echo '<div class="polaroido"><img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'" style="clear: left;"></a><div class="container">'.$row['relpath'].'</div></div><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
 			}
