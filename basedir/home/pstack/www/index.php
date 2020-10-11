@@ -290,7 +290,7 @@ div.polaroido {
 }
 
 div.polaroid {
-  width:50%;
+  width:30%;
   display: flex;
   flex-direction: column;
   background-color: white;
@@ -304,7 +304,7 @@ div.polaroid {
 
 @media only screen and (max-width: 999px){
   div.polaroid {
-    width:80%;
+    width:60%;
     display: flex;
     flex-direction: column;
     background-color: white;
@@ -315,7 +315,7 @@ div.polaroid {
   word-break: break-all;
   }
   div.polaroido {
-    width:80%;
+    width:60%;
     display: flex;
     flex-direction: column;
     background-color: white;
@@ -395,16 +395,30 @@ $.ajax({
 });
 
 },500); //reload every 500ms
+
+$('#status').click(function(){
+if (myArray[0] == \"#ff0000\"){
+if(confirm(myArray[1])){ 
+$.ajax({
+  url:\"index.php?action=acknowledge\",
+  type: 'GET',
+  dataType: 'text',
+});
+}
+} else {
+alert(myArray[1]);
+}
+ });
 });
 </script>
 
 </head>
 <header id=\"header\" class=\"header header--fixed hide-from-print\" role=\"banner\">
-<div id=\"status\" style=\"float:left; width:20; height:70;\" onclick=\"alert(myArray[1]);\"></div><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
+<div id=\"status\" style=\"float:left; width:20; height:70;\"></div><nobr><div class=\"menu\"><form action=\"/\" method=\"get\"><input id=\"query\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" name=\"query\" type=\"text\" size=\"20\" maxlength=\"99\" value=\"".htmlentities($web_query)."\" class=\"tftextinput\"><input type=\"submit\" name=\"action\" value=\"find\" class=\"tfbutton\">&nbsp;&nbsp;&nbsp;<a href=\"/destinations.php?tab=1\"><i class=\"material-icons md-24 md-light\" valign=\"middle\">settings</i></a></nobr>
 <input name=\"action\" type=\"hidden\" value=\"find\">
 </form>
+</div>
 </header>
-</div><div style=\"padding-bottom: 75;\"></div>
 <script src=\"headroom.js\"></script>
 <script>
 (function() {
@@ -448,9 +462,9 @@ window.addEventListener(\"scroll\", function(){
    }
    lastScrollTop = st;
 }, false);
-
-</script>";
-
+</script>
+<body bgcolor=\"$bg_color\"><br><br><br><br>
+<iframe src=\"scannerStatus.html\" marginwidth=\"0\" marginheight=\"0\" scrolling=\"no\" frameborder=0 width=\"100%\" height=\"38\" allowtransparency=\"true\" style=\"background: #FFFFFF;\"></iframe>";
 }
 
 function build_query($web_query)
@@ -597,7 +611,7 @@ function list_results($result,$web_query)
 			} elseif ($row['Media'] == "Picture") {
                         preg_match('@(/home/pstack/)(.+)@',$row['path'],$matchPath);
                         preg_match('@(<title>)(.+)(</title>)@',$row['content'],$matchContent);
-			echo '<div class="polaroido"><img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'" style="clear: left;"></a><div class="container"><span class="label">Date: </span>'.$row['ContentDate'].'<br><span class="label">Location: </span>'.$matchContent[2].'<br><span class="label">Path: </span>'.$matchPath[2].'</div></div><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
+			echo '<div class="polaroido"><img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'" style="width: 100%; object-fit: contain"></a><div class="container"><span class="label">Date: </span>'.$row['ContentDate'].'<br><span class="label">Location: </span>'.$matchContent[2].'<br><span class="label">Path: </span>'.$matchPath[2].'</div></div><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
 			//echo '<img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'"></a><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';
 			} else {
 			echo '<div class="polaroido"><img src="/?action=preview&ID='.$row['ID'].'" class="'.$class.'" style="clear: left;"></a><div class="container">'.$row['relpath'].'</div></div><br><a href="/?action=delete&ID='.$row['ID'].'&query='.htmlentities($web_query).'" onclick="return confirm(\'Are you sure you want to delete this item?\');"><i class="material-icons md-36 md-dark-green">delete</i></a></center><br>';

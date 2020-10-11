@@ -70,6 +70,7 @@ img.Picture {
 	/*display: block;*/
 	margin-left: auto;
 	margin-right: auto;
+        min-width: 100%;
 } 
 
 img.Document {
