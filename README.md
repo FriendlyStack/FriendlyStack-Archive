@@ -126,3 +126,6 @@ uses the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2
 
 FriendlyStack uses [wsdd](https://github.com/christgau/wsdd) which
 uses the [MIT License](https://github.com/christgau/wsdd/blob/master/LICENCE)
+
+FriendlyStack uses [GeoNames](https://geonames.org) which
+uses the [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/)
