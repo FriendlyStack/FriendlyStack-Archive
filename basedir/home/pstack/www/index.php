@@ -290,7 +290,7 @@ div.polaroido {
 }
 
 div.polaroid {
-  width:30%;
+  width:50%;
   display: flex;
   flex-direction: column;
   background-color: white;
